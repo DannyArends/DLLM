@@ -1,26 +1,23 @@
 ## DLLM - D Language Interface for llama.cpp ✨
-A minimal, clean D language interface for running LLM inference using [llama.cpp](https://github.com/ggerganov/llama.cpp).
+A minimal, clean D language interface for running LLM inference using [importC](https://dlang.org/spec/importc.html) 
+around [llama.cpp](https://github.com/ggerganov/llama.cpp).
 
-### Features
-
-- **Direct llama.cpp C API bindings** - No Python overhead
+### Features 🚀
+No Python overhead with direct llama.cpp C API bindings using a modular design in the D language.
 - **GPU acceleration** - Full CUDA support with automatic offloading
-- **Modular design** - Clean separation of concerns across modules
 - **UTF-8 handling** - Proper emoji and multi-byte character support on Windows
 - **Efficient batching** - Handles prompts of any length with automatic chunking
 - **Low memory footprint** - Q8_0 KV cache quantization
 
-### Requirements
-
-#### Build Dependencies
+### Build with 🛠️
+Compilation guide [here](deps/compile.md)
 - **D Compiler**: DMD, LDC, or GDC
-- **llama.cpp**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) support (for GPU acceleration)
+- **llama.cpp**: Bundeled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
 
-#### Runtime
-- **CUDA**: For GPU acceleration (optional but recommended)
-- **Model files**: GGUF format models (e.g., Qwen, Llama, Mistral)
 
-## Run
+## Run ⚙️
+Execute with prompt
 ```shell
   dub --force -- "What is your name?"
   dub --force -- "Tell me, what happened today?"
@@ -28,19 +25,15 @@ A minimal, clean D language interface for running LLM inference using [llama.cpp
   dub --force -- "Think about, then tell me, a story about math, in 4 lines of text. Just be creative !"
 ```
 
-### License
+### Contributing 🙌
 
-This project interfaces with llama.cpp, which is MIT licensed.
+Want to contribute? Great! Contribute to this repo by starring ⭐ or forking 🍴, and feel 
+free to start an issue first to discuss idea's before sending a pull request. You're also 
+welcome to post comments on commits.
 
-### Contributing
+Or be a maintainer, and adopt (the documentation of) a function.
 
-Contributions welcome! This is a minimal reference implementation focused on:
-- Clean D code
-- Direct C API usage
-- Production-ready UTF-8 handling
-- Efficient batching
+### License ⚖️
 
-### Acknowledgments
-
-- [llama.cpp](https://github.com/ggerganov/llama.cpp) - The underlying inference engine
-- Built during research on LLM agent systems
+Written by Danny Arends and is released under the GNU GENERAL PUBLIC LICENSE Version 3 (GPLv3). 
+See [LICENSE.txt](./LICENSE.txt).
