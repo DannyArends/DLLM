@@ -10,7 +10,7 @@ No Python overhead with direct llama.cpp C API bindings using a modular design i
 - **Low memory footprint** - Q8_0 KV cache quantization
 
 ### Build with 🛠️
-Compilation guide [here](deps/compile.md)
+Compilation guide [here](deps/README.md)
 - **D Compiler**: DMD, LDC, or GDC
 - **llama.cpp**: Bundeled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
