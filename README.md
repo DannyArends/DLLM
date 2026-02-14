@@ -1,5 +1,5 @@
 ## DLLM - D Language Interface for llama.cpp ✨
-A minimal, clean D language interface for running LLM inference using [importC](https://dlang.org/spec/importc.html) 
+A minimal, clean D language interface for running local machine LLM inference using [importC](https://dlang.org/spec/importc.html) 
 around [llama.cpp](https://github.com/ggerganov/llama.cpp).
 
 ### Features 🚀
@@ -22,7 +22,7 @@ Execute with prompt
   dub --force -- "What is your name?"
   dub --force -- "Tell me, what happened today?"
   dub --force -- "Tell me, what is going to happen tomorrow?"
-  dub --force -- "Think about, then tell me, a story about math, in 4 lines of text. Just be creative !"
+  dub --force -- "Think about then tell me, a story about math, 4 lines of text and be creative !"
 ```
 
 ### Contributing 🙌
