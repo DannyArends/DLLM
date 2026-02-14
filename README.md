@@ -19,10 +19,10 @@ Compilation guide [here](deps/README.md)
 ## Run ⚙️
 Execute with prompt
 ```shell
-  dub --force -- "What is your name?"
-  dub --force -- "Tell me, what happened today?"
-  dub --force -- "Tell me, what is going to happen tomorrow?"
-  dub --force -- "Think about then tell me, a story about math, 4 lines of text and be creative !"
+  dub -- "What is your name?"
+  dub -- "Tell me, what happened today?"
+  dub -- "Tell me, what is going to happen tomorrow?"
+  dub -- "Think about then tell me, a story about math, 4 lines of text and be creative !"
 ```
 
 ### Contributing 🙌
