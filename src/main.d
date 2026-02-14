@@ -1,10 +1,11 @@
 import std.stdio : writefln, writef;
+import std.format;
 
 import includes;
 import console : setupConsole;
 import context : processTokens;
 import model : createContextParams;
-import vocab : tokenizePrompt;
+import vocab : tokenizePrompt, assistantFmt;
 
 const(char)* LLM_SUMMARY_MODEL = "C:/Github/LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL = "C:/Github/LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
@@ -16,7 +17,7 @@ int main(string[] args) {
   // Load model
   llama_model_params model_params = llama_model_default_params();
   model_params.n_gpu_layers = -1;
-  llama_model* model = llama_model_load_from_file(LLM_SUMMARY_MODEL, model_params);
+  llama_model* model = llama_model_load_from_file(LLM_AGENT_MODEL, model_params);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -27,11 +28,16 @@ int main(string[] args) {
 
    // Create sampler
   llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
-  llama_sampler_chain_add(sampler, llama_sampler_init_temp(0.8));
+  llama_sampler_chain_add(sampler, llama_sampler_init_temp(0.1));
+  llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.95, 1));
+  llama_sampler_chain_add(sampler, llama_sampler_init_min_p(0.05, 1));
+  llama_sampler_chain_add(sampler, llama_sampler_init_top_k(40));
   llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // Tokenize prompt
-  llama_token[] tokens = vocab.tokenizePrompt();
+  string prompt = format(assistantFmt, "What is your name?");
+  if(args[].length > 1) prompt = format(assistantFmt, args[($-1)]);
+  llama_token[] tokens = vocab.tokenizePrompt(prompt);
 
   // Process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
