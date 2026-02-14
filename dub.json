@@ -12,7 +12,16 @@
 		"targetType": "executable",
 		"targetPath": "bin",
 		"platforms": ["linux", "windows"],
-		"libs-linux": ["SDL2"],
+		"dflags": ["-P-I./deps/llama.cpp/include/", "-P-I./deps/llama.cpp/ggml/include/"],
+		"lflags": ["/LIBPATH:./deps/llama.cpp/build/src/Debug"],
+		"libs": ["llama"],
+		"copyFiles-windows-x86_64": [
+			"./deps/llama.cpp/build/bin/Debug/llama.dll",
+			"./deps/llama.cpp/build/bin/Debug/ggml-base.dll",
+			"./deps/llama.cpp/build/bin/Debug/ggml-cpu.dll",
+			"./deps/llama.cpp/build/bin/Debug/ggml-cuda.dll",
+			"./deps/llama.cpp/build/bin/Debug/ggml.dll",
+		],
 	}]
 }
 
