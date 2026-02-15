@@ -48,14 +48,14 @@ string listDirectory(string path) {
     foreach (entry; dirEntries(path, SpanMode.shallow)) {
       JSONValue item = JSONValue.emptyObject;
       item["name"] = JSONValue(baseName(entry.name));
-      item["path"] = JSONValue(entry.name.replace('\\', '/'));
+      item["path"] = JSONValue(buildNormalizedPath(entry.name));
       item["type"] = JSONValue(entry.isDir ? "dir" : "file");
 
-      item["size"] = JSONValue(0);
+      item["size"] = JSONValue("-");
       if (!entry.isDir) {
         try {
           item["size"] = JSONValue(entry.size);
-        } catch (Exception e) { }
+        } catch (Exception e) { item["size"] = JSONValue(0); }
       }
       entries ~= item;
     }
@@ -67,10 +67,9 @@ string listDirectory(string path) {
 @Tool("Write content to a temporary file located at path. Returns a json containing the file path and file size in bytes.")
 string writeFile(string content) {
   try {
-    string tempPath = buildNormalizedPath(format("%sagent_%s.txt", tempDir(), randomUUID()));
-    tempPath = tempPath.replace('\\', '/');
-    write(tempPath, content);
-    writefln("=== Wrote to '%s'", tempPath);
-    return JSONValue(["path": JSONValue(tempPath), "length": JSONValue(content.length)]).toString();
+    string path = buildNormalizedPath(format("%sagent_%s.txt", tempDir(), randomUUID()));
+    path.write(content);
+    writefln("=== Wrote to '%s'", path);
+    return JSONValue(["path": JSONValue(path), "length": JSONValue(content.length)]).toString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }

@@ -7,14 +7,16 @@ import includes;
 
 import std.array : appender;
 import std.format : format;
-import std.stdio : writefln, writef, write;
+import std.stdio : writefln, writef, writeln, write;
+
+import files : listDirectory;
 
 import console : setupConsole;
 import context : processTokens;
 import model : createContextParams;
 import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
-import vocab : tokenizePrompt, assistantFmt, toolResponseFmt;
+import vocab : tokenize, assistantFmt, toolResponseFmt;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL = "../LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
@@ -27,7 +29,7 @@ int main(string[] args) {
   // Load model
   llama_model_params model_params = llama_model_default_params();
   model_params.n_gpu_layers = -1;
-  llama_model* model = llama_model_load_from_file(LLM_SUMMARY_MODEL, model_params);
+  llama_model* model = llama_model_load_from_file(LLM_AGENT_MODEL, model_params);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -43,7 +45,7 @@ int main(string[] args) {
   string prompt = format(assistantFmt, toolsToJSON(), "What is your name?");
   if (args[].length > 1) prompt = format(assistantFmt, toolsToJSON(), args[($-1)]);
   if (verbose) writefln("=== Prompt ===\n%s\n===", prompt);
-  llama_token[] tokens = vocab.tokenizePrompt(prompt);
+  llama_token[] tokens = vocab.tokenize(prompt);
 
   // Create a batch and process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
@@ -85,21 +87,23 @@ int main(string[] args) {
       tGen++;
     }
     cPos += tGen;
-
+    writeln();
     // Process tool calls, stop when no tools need to be called anymore
     ToolCall[] toolCalls = parseToolCalls(response.data);
     if (toolCalls.length == 0) break;
-    if (verbose) writefln("\n=== Found %d tool call(s), executing... ===", toolCalls.length);
-
-    llama_memory_t mem = llama_get_memory(ctx);
 
     // Remove model's output (thinking + tool_call) from memory
+    llama_memory_t mem = llama_get_memory(ctx);
     llama_memory_seq_rm(mem, 0, cPos - tGen, cPos);
     cPos -= tGen;
-    if (verbose) writefln("\n=== I[%d], removed %d, n_ctx left: %d ===", iteration + 1, tGen, cast(int)(ctx_params.n_ctx - cPos));
 
     // Execute tools, Format for LLM, and Tokenize continuation
-    llama_token[] contTokens = vocab.tokenizePrompt(format(toolResponseFmt, executeToolCalls(toolCalls)));
+    auto result = toolResponseFmt.format(toolCalls.executeToolCalls());
+    llama_token[] contTokens = vocab.tokenize(result);
+
+    auto left = cast(int)(ctx_params.n_ctx - cPos + contTokens.length);
+    if (verbose) writefln("=== I[%d], removed %d, generated %d, n_ctx left: %d ===", iteration + 1, tGen, contTokens.length, left);
+    if (left <= 0) { writeln("Error: Out Of Context"); break; }
 
     // Process continuation
     if (!ctx.processTokens(batch, contTokens, cast(int)ctx_params.n_batch, cPos)) {

@@ -62,9 +62,7 @@ mixin RegisterTools;
 string add(string a, string b) {
   try {
     return to!string(to!int(a) + to!int(b));
-  } catch (Exception e) { 
-    return format("Error: %s", e.msg); 
-  }
+  } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 ```
 

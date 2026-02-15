@@ -119,7 +119,7 @@ string executeToolCalls(ToolCall[] calls) {
   auto result = appender!string;
   foreach(call; calls) {
     string toolResult = executeTool(call.name, call.arguments);
-    JSONValue response = JSONValue(["tool": JSONValue(call.name), "result": JSONValue(toolResult)]);
+    JSONValue response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
     result ~= format("<tool_response>%s</tool_response>\n",response.toString());
   }
   return result.data;

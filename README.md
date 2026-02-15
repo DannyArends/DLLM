@@ -19,7 +19,7 @@ Compilation guide [here](deps/README.md)
 Execute with prompt
 ```shell
   dub -- "What is your name?"
-  dub -- "Tell me, what happened today?"
+  dub -- "What day of the week is today?"
   dub -- "Tell me, what is going to happen tomorrow?"
   dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
   dub -- "Read the file dub.json, and summarize in a single line what the file is about."
