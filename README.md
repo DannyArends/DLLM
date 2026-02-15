@@ -1,12 +1,12 @@
 ## DLLM - D Language Interface for llama.cpp ✨
-A minimal, clean D language interface for running local machine LLM inference using [importC](https://dlang.org/spec/importc.html) 
+A minimal, clean D language interface for running a local machine LLM agent inference using [importC](https://dlang.org/spec/importc.html) 
 around [llama.cpp](https://github.com/ggerganov/llama.cpp).
 
 ### Features 🚀
 No Python overhead with direct llama.cpp C API bindings using a modular design in the D language.
 - **GPU acceleration** - Full CUDA support with automatic offloading
 - **UTF-8 handling** - Proper emoji and multi-byte character support on Windows
-- **Efficient batching** - Handles prompts of any length with automatic chunking
+- **Efficient batching** - Handles prompts with automatic chunking, cleans context on tool execution
 - **Low memory footprint** - Q8_0 KV cache quantization
 
 ### Build with 🛠️
@@ -15,14 +15,14 @@ Compilation guide [here](deps/README.md)
 - **llama.cpp**: Bundeled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
 
-
 ## Run ⚙️
 Execute with prompt
 ```shell
   dub -- "What is your name?"
   dub -- "Tell me, what happened today?"
   dub -- "Tell me, what is going to happen tomorrow?"
-  dub -- "Think about then tell me, a story about math, 4 lines of text and be creative !"
+  dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
+  dub -- "Read the file dub.json, and summarize in a single line what the file is about."
 ```
 
 ### Contributing 🙌
