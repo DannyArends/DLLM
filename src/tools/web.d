@@ -18,7 +18,7 @@ import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 
-@Tool("Fetch URL content and save to temp file. Returns a json containing the file path to the downloaded content and content length.")
+@Tool("Fetch URL content and save the content to temporary file. Returns a json with the path to the content and its length.")
 string webFetch(string url) {
   try {
     //writefln("=== Fetching: %s", url);
@@ -57,7 +57,7 @@ string webFetch(string url) {
   } catch (Exception e) { return "Error: " ~ e.msg; }
 }
 
-@Tool("Search the web for a query and return titles and URLs")
+@Tool("Search the web using a query")
 string webSearch(string query, string max_results) {
   try {
     int maxResults = to!int(max_results);

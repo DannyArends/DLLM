@@ -27,7 +27,7 @@ int main(string[] args) {
   // Load model
   llama_model_params model_params = llama_model_default_params();
   model_params.n_gpu_layers = -1;
-  llama_model* model = llama_model_load_from_file(LLM_AGENT_MODEL, model_params);
+  llama_model* model = llama_model_load_from_file(LLM_SUMMARY_MODEL, model_params);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
