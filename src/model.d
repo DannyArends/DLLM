@@ -1,7 +1,12 @@
+/** 
+ * Authors: Danny Arends
+ * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
+ */
+
 import includes;
 
 // Create context
-llama_context_params createContextParams(llama_model* model, uint n_ctx = 2048, uint n_batch = 512, uint n_threads = 8) {
+llama_context_params createContextParams(llama_model* model, uint n_ctx = 4096, uint n_batch = 512, uint n_threads = 8) {
   llama_context_params ctx_params = llama_context_default_params();
   ctx_params.n_ctx = n_ctx;
   ctx_params.n_batch = n_batch;

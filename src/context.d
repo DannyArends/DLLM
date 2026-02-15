@@ -1,7 +1,12 @@
+/** 
+ * Authors: Danny Arends
+ * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
+ */
+
 import includes;
 
 // Process prompt
-bool processTokens(llama_context* ctx, ref llama_batch batch, const(llama_token[]) tokens, int capacity) {
+bool processTokens(llama_context* ctx, ref llama_batch batch, const(llama_token[]) tokens, int capacity, int startPos = 0) {
   int n_tokens = cast(int)tokens.length;
   if (n_tokens <= 0) return false;
   
@@ -11,7 +16,7 @@ bool processTokens(llama_context* ctx, ref llama_batch batch, const(llama_token[
 
     for (int i = 0; i < batch_size; i++) {      // Fill batch
       batch.token[i] = tokens[batch_start + i];
-      batch.pos[i] = batch_start + i;
+      batch.pos[i] = startPos + batch_start + i;
       batch.n_seq_id[i] = 1;
       batch.seq_id[i][0] = 0;
       batch.logits[i] = 0;

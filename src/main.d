@@ -1,14 +1,24 @@
-import std.stdio : writefln, writef;
-import std.format;
+/** 
+ * Authors: Danny Arends
+ * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
+ */
 
 import includes;
+
+import std.array : appender;
+import std.format : format;
+import std.stdio : writefln, writef, write;
+
 import console : setupConsole;
 import context : processTokens;
 import model : createContextParams;
-import vocab : tokenizePrompt, assistantFmt;
+import sampler : createSampler;
+import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
+import vocab : tokenizePrompt, assistantFmt, toolResponseFmt;
 
-const(char)* LLM_SUMMARY_MODEL = "C:/Github/LLMs/Qwen3-0.6B.Q4_K_M.gguf";
-const(char)* LLM_AGENT_MODEL = "C:/Github/LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
+const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
+const(char)* LLM_AGENT_MODEL = "../LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
+bool verbose = false;
 
 int main(string[] args) {
   llama_backend_init();
@@ -27,46 +37,77 @@ int main(string[] args) {
   llama_context* ctx = llama_init_from_model(model, ctx_params);
 
    // Create sampler
-  llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
-  llama_sampler_chain_add(sampler, llama_sampler_init_temp(0.1));
-  llama_sampler_chain_add(sampler, llama_sampler_init_top_p(0.95, 1));
-  llama_sampler_chain_add(sampler, llama_sampler_init_min_p(0.05, 1));
-  llama_sampler_chain_add(sampler, llama_sampler_init_top_k(40));
-  llama_sampler_chain_add(sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+  llama_sampler* sampler = createSampler();
 
-  // Tokenize prompt
-  string prompt = format(assistantFmt, "What is your name?");
-  if(args[].length > 1) prompt = format(assistantFmt, args[($-1)]);
+  // Construct and tokenize prompt
+  string prompt = format(assistantFmt, toolsToJSON(), "What is your name?");
+  if (args[].length > 1) prompt = format(assistantFmt, toolsToJSON(), args[($-1)]);
+  if (verbose) writefln("=== Prompt ===\n%s\n===", prompt);
   llama_token[] tokens = vocab.tokenizePrompt(prompt);
 
-  // Process prompt
+  // Create a batch and process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
   if (!ctx.processTokens(batch, tokens, cast(int)ctx_params.n_batch)) { writefln("Failed to decode"); return 1; }
 
-  int n_gen = cast(int)(ctx_params.n_ctx - tokens.length);
+  // Agent loop
+  int maxIterations = 10;
+  int cPos = cast(int)tokens.length;
+  for (int iteration = 0; iteration < maxIterations; iteration++) {
+    int nLeft = cast(int)(ctx_params.n_ctx - cPos);
+    writefln("\n=== I[%d], n_ctx left: %d ===", iteration + 1, nLeft);
+    auto response = appender!string;
 
-  // Generate tokens
-  char[256] buf = 0;
-  for (int g = 0; g < n_gen; g++) {
-    llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
+    // Generate tokens
+    char[256] buf = 0;
+    int tGen = 0;
+    for (int i = 0; i < nLeft; i++) {
+      llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
 
-    // End of generation token & other control tokens
-    if (llama_vocab_is_eog(vocab, new_token)) break;
-    if (llama_vocab_get_attr(vocab, new_token) & LLAMA_TOKEN_ATTR_CONTROL) continue;
+      // End of generation token & other control tokens
+      if (llama_vocab_is_eog(vocab, new_token)) break;
+      if (llama_vocab_get_attr(vocab, new_token) & LLAMA_TOKEN_ATTR_CONTROL) continue;
 
-    // Decode the generated tokenid to text
-    int n = llama_token_to_piece(vocab, new_token, buf.ptr, buf.sizeof, 0, true);
-    if (n > 0) { writef("%s", buf[0..n]); }
+      // Decode the generated tokenid to text
+      int n = llama_token_to_piece(vocab, new_token, buf.ptr, buf.sizeof, 0, true);
+      if (n > 0) { 
+        string tokenText = format("%s", cast(string)buf[0..n]);
+        write(tokenText);
+        response ~= tokenText;
+      }
 
-    // Prepare next batch
-    batch.token[0] = new_token;
-    batch.pos[0] = cast(int)(tokens.length) + g;
-    batch.logits[0] = 1;
-    batch.n_tokens = 1;
+      // Prepare next batch
+      batch.token[0] = new_token;
+      batch.pos[0] = cPos + i;
+      batch.logits[0] = 1;
+      batch.n_tokens = 1;
 
-    if (llama_decode(ctx, batch) != 0) break;
+      if (llama_decode(ctx, batch) != 0) break;
+      tGen++;
+    }
+    cPos += tGen;
+
+    // Process tool calls, stop when no tools need to be called anymore
+    ToolCall[] toolCalls = parseToolCalls(response.data);
+    if (toolCalls.length == 0) break;
+    if (verbose) writefln("\n=== Found %d tool call(s), executing... ===", toolCalls.length);
+
+    llama_memory_t mem = llama_get_memory(ctx);
+
+    // Remove model's output (thinking + tool_call) from memory
+    llama_memory_seq_rm(mem, 0, cPos - tGen, cPos);
+    cPos -= tGen;
+    if (verbose) writefln("\n=== I[%d], removed %d, n_ctx left: %d ===", iteration + 1, tGen, cast(int)(ctx_params.n_ctx - cPos));
+
+    // Execute tools, Format for LLM, and Tokenize continuation
+    llama_token[] contTokens = vocab.tokenizePrompt(format(toolResponseFmt, executeToolCalls(toolCalls)));
+
+    // Process continuation
+    if (!ctx.processTokens(batch, contTokens, cast(int)ctx_params.n_batch, cPos)) {
+      writefln("Error: Failed to process continuation");
+      break;
+    }
+    cPos += cast(int)contTokens.length; // Update current position
   }
-
   // Cleanup
   llama_batch_free(batch);
   llama_sampler_free(sampler);
