@@ -5,7 +5,7 @@
 
 import includes;
 
-llama_sampler* createSampler(float temp = 0.3, float topP = 0.95, float minP = 0.05, int topK = 20){
+llama_sampler* createSampler(float temp = 0.8, float topP = 0.95, float minP = 0.05, int topK = 20){
   llama_sampler* sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
   llama_sampler_chain_add(sampler, llama_sampler_init_temp(temp));
   llama_sampler_chain_add(sampler, llama_sampler_init_top_p(topP, 1));

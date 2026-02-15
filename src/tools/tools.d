@@ -4,18 +4,29 @@
  */
 
 import std.array : appender;
+import std.format : format;
 import std.json : JSONValue, parseJSON;
 import std.regex : regex, matchAll;
-import std.stdio : writefln;
 import std.string : lastIndexOf;
+import std.stdio : writefln, writef, writeln, write;
 
-import files : readFile;
+// UDA for marking tool functions
+struct Tool {
+  string description;
+}
+
+// Tool parameter definition
+struct ToolParam {
+    string name;
+    string type;
+}
 
 // Tool definition
 struct ToolDef {
   string name;
   string description;
-  string[string] parameters;
+  ToolParam[] parameters;
+  string function(JSONValue) executor;
 }
 
 // Tool Call definition
@@ -25,12 +36,54 @@ struct ToolCall {
 }
 
 // Tool registry
-immutable ToolDef[] ALL_TOOLS;
+__gshared ToolDef[] ALL_TOOLS;
 
-shared static this() {
-  ALL_TOOLS = [
-    ToolDef("readFile", "Read the contents of a file.", ["path": "string"])
-  ];
+// Mixin template to auto-register all @Tool functions in a module
+mixin template RegisterTools() {
+  static this() {
+    import tools : ALL_TOOLS, Tool, ToolDef, ToolParam;
+    import std.conv : to;
+    import std.traits : hasUDA, getUDAs, ParameterIdentifierTuple;
+    import std.json : JSONValue;
+    import std.array : join;
+
+    // Get reference to current module an scan all functions for UDAs
+    mixin("alias ThisModule = " ~ __MODULE__ ~ ";");
+
+    static foreach(name; __traits(allMembers, ThisModule)) {{
+      static if (name != "object" && name != "ThisModule") {
+        mixin("alias member = " ~ name ~ ";");
+        static if (is(typeof(member) == function)) {
+          static if (hasUDA!(member, Tool)) {
+            // Get the tool description, parameters, and executor
+            enum description = getUDAs!(member, Tool)[0].description;
+            alias ParamNames = ParameterIdentifierTuple!member;
+
+            ToolParam[] parameters;
+            static foreach(paramName; ParamNames) { parameters ~= ToolParam(paramName, "string"); }
+
+            // Build the tool executor
+            auto executor = (JSONValue args) {
+              static foreach(paramName; ParamNames) {
+                if (paramName !in args) { return "Error: missing " ~ paramName ~ " parameter"; }
+              }
+
+              string[] argValues;
+              static foreach(paramName; ParamNames) { argValues ~= args[paramName].str; }
+
+              enum callStr = {
+                  string[] argRefs;
+                  static foreach(i; 0 .. ParamNames.length) { argRefs ~= "argValues[" ~ i.to!string ~ "]"; }
+                  return "return member(" ~ argRefs.join(", ") ~ ");";
+              }();
+              mixin(callStr);
+            };
+            ALL_TOOLS ~= ToolDef(name, description, parameters, executor);
+          }
+        }
+      }
+    }}
+  }
 }
 
 // Parse tool call from model output
@@ -54,14 +107,11 @@ ToolCall[] parseToolCalls(string response) {
 // Execute tool by name with JSON arguments
 string executeTool(string toolName, JSONValue args) {
   try {
-    switch(toolName) {
-      case "readFile":
-        if ("path" in args) return readFile(args["path"].str);
-        return "Error: missing path parameter";
-      default:
-        return "Error: unknown tool '" ~ toolName ~ "'";
+    foreach(tool; ALL_TOOLS) {
+      if (tool.name == toolName) return tool.executor(args);
     }
-  } catch (Exception e) { return "Error executing tool: " ~ e.msg; }
+    return "Error: unknown tool '" ~ toolName ~ "'";
+  } catch (Exception e) { return(format("Error executing tool: %s", e.msg)); }
 }
 
 // Execute all tool calls and format responses
@@ -70,9 +120,7 @@ string executeToolCalls(ToolCall[] calls) {
   foreach(call; calls) {
     string toolResult = executeTool(call.name, call.arguments);
     JSONValue response = JSONValue(["tool": JSONValue(call.name), "result": JSONValue(toolResult)]);
-    result ~= "<tool_response>\n";
-    result ~= response.toPrettyString();
-    result ~= "\n</tool_response>\n";
+    result ~= format("<tool_response>%s</tool_response>\n",response.toString());
   }
   return result.data;
 }
@@ -84,15 +132,19 @@ string toolsToJSON() {
   result ~= "[";
   foreach(i, tool; ALL_TOOLS) {
     if (i > 0) result ~= ",";
+
+    JSONValue properties = JSONValue.emptyObject;
+    foreach(param; tool.parameters) { properties[param.name] = JSONValue(["type": JSONValue(param.type)]); }
+
     JSONValue toolJson = JSONValue([
-          "name": JSONValue(tool.name),
-          "description": JSONValue(tool.description),
-          "parameters": JSONValue([
-              "type": JSONValue("object"),
-              "properties": JSONValue(tool.parameters)
-          ])
-      ]);
-    result ~= toolJson.toPrettyString();
+      "name": JSONValue(tool.name),
+      "description": JSONValue(tool.description),
+      "parameters": JSONValue([
+        "type": JSONValue("object"),
+        "properties": properties
+      ])
+    ]);
+    result ~= toolJson.toString();
   }
   result ~= "]";
   return result.data;

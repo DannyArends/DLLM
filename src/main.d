@@ -18,7 +18,7 @@ import vocab : tokenizePrompt, assistantFmt, toolResponseFmt;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL = "../LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
-bool verbose = false;
+bool verbose = true;
 
 int main(string[] args) {
   llama_backend_init();

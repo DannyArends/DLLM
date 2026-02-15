@@ -6,7 +6,11 @@
 import std.file : readText;
 import std.format : format;
 
-// Read file tool
+import tools : Tool, RegisterTools;
+
+mixin RegisterTools;
+
+@Tool("Read the contents of a file.")
 string readFile(string path) {
   try { return readText(path);
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
