@@ -20,8 +20,11 @@
 			"./deps/llama.cpp/build/ggml/src/libggml-cpu.a",
 			"./deps/llama.cpp/build/ggml/src/ggml-cuda/libggml-cuda.a"
 		],
-		"lflags-linux": ["-L/usr/local/cuda/lib64", "-lpthread", "-ldl"],
-		"libs-linux": ["stdc++", "gomp", "cuda", "cudart", "cublas", "culibos"],
+		"lflags-linux": [
+				"-L/usr/local/cuda/lib64", 
+				"-L-static-libstdc++", "-L-static-libgcc", "-L-static", "-l:libgomp.a",
+				"-L-dynamic", "-lpthread", "-ldl"],
+		"libs-linux": ["stdc++", "cuda", "cudart", "cublas", "culibos"],
 		"libs-windows-x86_64": ["llama"],
 		"lflags-windows-x86_64": ["/LIBPATH:./deps/llama.cpp/build/src/Debug"],
 		"copyFiles-windows-x86_64": [
