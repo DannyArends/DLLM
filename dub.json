@@ -13,15 +13,24 @@
 		"targetPath": "bin",
 		"platforms": ["linux", "windows"],
 		"dflags": ["-P-I./deps/llama.cpp/include/", "-P-I./deps/llama.cpp/ggml/include/"],
-		"lflags": ["/LIBPATH:./deps/llama.cpp/build/src/Debug"],
-		"libs": ["llama"],
+		"sourceFiles-linux": [
+			"./deps/llama.cpp/build/src/libllama.a",
+			"./deps/llama.cpp/build/ggml/src/libggml.a",
+			"./deps/llama.cpp/build/ggml/src/libggml-cpu.a",
+			"./deps/llama.cpp/build/ggml/src/ggml-cuda/libggml-cuda.a",
+			"./deps/llama.cpp/build/ggml/src/libggml-base.a"
+		],
+		"lflags-linux": ["-L/usr/local/cuda/lib64", "-lpthread", "-ldl"],
+		"libs-linux": ["stdc++", "gomp", "cuda", "cudart", "cublas", "culibos"],
+		"libs-windows-x86_64": ["llama"],
+		"lflags-windows-x86_64": ["/LIBPATH:./deps/llama.cpp/build/src/Debug"],
 		"copyFiles-windows-x86_64": [
 			"./deps/llama.cpp/build/bin/Debug/llama.dll",
 			"./deps/llama.cpp/build/bin/Debug/ggml-base.dll",
 			"./deps/llama.cpp/build/bin/Debug/ggml-cpu.dll",
 			"./deps/llama.cpp/build/bin/Debug/ggml-cuda.dll",
 			"./deps/llama.cpp/build/bin/Debug/ggml.dll",
-		],
+		]
 	}]
 }
 

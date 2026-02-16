@@ -73,7 +73,7 @@ int main(string[] args) {
       int n = llama_token_to_piece(vocab, new_token, buf.ptr, buf.sizeof, 0, true);
       if (n > 0) { 
         string tokenText = format("%s", cast(string)buf[0..n]);
-        write(tokenText);
+        write(tokenText); stdout.fflush();
         response ~= tokenText;
       }
 
