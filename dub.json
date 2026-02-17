@@ -12,13 +12,14 @@
 		"targetType": "executable",
 		"targetPath": "bin",
 		"platforms": ["linux", "windows"],
-		"dflags": ["-P-I./deps/llama.cpp/include/", "-P-I./deps/llama.cpp/ggml/include/"],
+		"dflags": ["-P-I./deps/llama.cpp/include/", "-P-I./deps/llama.cpp/ggml/include/", "-P-I./deps/llama.cpp/tools/mtmd/"],
 		"sourceFiles-linux": [
 			"./deps/llama.cpp/build/src/libllama.a",
 			"./deps/llama.cpp/build/ggml/src/libggml.a",
 			"./deps/llama.cpp/build/ggml/src/libggml-base.a",
 			"./deps/llama.cpp/build/ggml/src/libggml-cpu.a",
-			"./deps/llama.cpp/build/ggml/src/ggml-cuda/libggml-cuda.a"
+			"./deps/llama.cpp/build/ggml/src/ggml-cuda/libggml-cuda.a",
+			"./deps/llama.cpp/build/tools/mtmd/libmtmd.a"
 		],
 		"lflags-linux": [
 				"-L/usr/local/cuda/lib64", 

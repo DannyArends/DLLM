@@ -19,7 +19,8 @@ import vocab : tokenize, detectTemplate;
 import files : readFile;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
-const(char)* LLM_AGENT_MODEL = "../LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
+const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
+const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
 
 bool verbose = false;
 
@@ -31,6 +32,15 @@ int main(string[] args) {
   llama_model_params model_params = llama_model_default_params();
   model_params.n_gpu_layers = -1;
   llama_model* model = llama_model_load_from_file(LLM_AGENT_MODEL, model_params);
+
+  // Load MTMD model
+  mtmd_context_params mparams = mtmd_context_params_default();
+  mparams.use_gpu = true;
+  mparams.n_threads = 4;
+  mtmd_context* ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
+
+  mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/photo.png");
+
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -51,13 +61,27 @@ int main(string[] args) {
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
   llama_token[] tokens = vocab.tokenize(prompt);
 
+  //
+  mtmd_input_text text;
+  text.text        = "What is in this image? <__media__>";
+  text.add_special  = true;
+  text.parse_special = true;
+
+  mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+  mtmd_bitmap*[] bitmaps = [ bmp ];
+  mtmd_tokenize(ctx_vision, chunks, &text, bitmaps.ptr, 1);
+
+  llama_pos new_n_past;
+  mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, 0, 0, 512, true, &new_n_past);
+
   // Create a batch and process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
-  if (!ctx.processTokens(batch, tokens, cast(int)ctx_params.n_batch)) { writefln("Failed to decode"); return 1; }
+  if (!ctx.processTokens(batch, tokens, cast(int)ctx_params.n_batch, new_n_past)) { writefln("Failed to decode"); return 1; }
+
 
   // Agent loop
   int maxIterations = 10;
-  int cPos = cast(int)tokens.length;
+  int cPos = cast(int)tokens.length + new_n_past;
   for (int iteration = 0; iteration < maxIterations; iteration++) {
     int nLeft = cast(int)(ctx_params.n_ctx - cPos);
     writefln("\n=== I[%d], n_ctx left: %d ===", iteration + 1, nLeft);
