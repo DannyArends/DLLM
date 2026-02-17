@@ -7,6 +7,7 @@ import includes;
 
 import std.array : appender;
 import std.format : format;
+import std.string : toStringz;
 import std.stdio : writefln, writef, writeln, write;
 
 import console : setupConsole;
@@ -39,7 +40,8 @@ int main(string[] args) {
   mparams.n_threads = 4;
   mtmd_context* ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
-  mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/photo.png");
+  mtmd_bitmap* bmp1 = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/image4.jpeg");
+  mtmd_bitmap* bmp2 = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/image7.jpeg");
 
 
   // Get vocab from model
@@ -59,29 +61,34 @@ int main(string[] args) {
 
   auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
-  llama_token[] tokens = vocab.tokenize(prompt);
 
   //
   mtmd_input_text text;
-  text.text        = "What is in this image? <__media__>";
-  text.add_special  = true;
+  text.text = prompt.toStringz(); //"What is in this image? <__media__>";
+  text.add_special = true;
   text.parse_special = true;
 
   mtmd_input_chunks* chunks = mtmd_input_chunks_init();
-  mtmd_bitmap*[] bitmaps = [ bmp ];
-  mtmd_tokenize(ctx_vision, chunks, &text, bitmaps.ptr, 1);
+  mtmd_bitmap*[] bitmaps = [ bmp1, bmp2 ];
+  mtmd_tokenize(ctx_vision, chunks, &text, bitmaps.ptr, 2);
 
-  llama_pos new_n_past;
-  mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, 0, 0, 512, true, &new_n_past);
+  size_t[] chunkSizes;
+  chunkSizes.length = mtmd_input_chunks_size(chunks);
+  for (size_t i = 0; i < chunkSizes.length; i++) {
+    chunkSizes[i] = mtmd_input_chunk_get_n_tokens(mtmd_input_chunks_get(chunks, i));
+  }
+  writefln("Total chunks: %d - %s", chunkSizes.length, chunkSizes);
+
+  llama_pos cPos;
+  int rc = mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, 0, 0, 2048, true, &cPos);
+  if (rc != 0) { writefln("Failed to eval chunks: %d", rc); return 1; }
+  writefln("cPos after image eval: %d", cPos);  // sanity check
 
   // Create a batch and process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
-  if (!ctx.processTokens(batch, tokens, cast(int)ctx_params.n_batch, new_n_past)) { writefln("Failed to decode"); return 1; }
-
 
   // Agent loop
   int maxIterations = 10;
-  int cPos = cast(int)tokens.length + new_n_past;
   for (int iteration = 0; iteration < maxIterations; iteration++) {
     int nLeft = cast(int)(ctx_params.n_ctx - cPos);
     writefln("\n=== I[%d], n_ctx left: %d ===", iteration + 1, nLeft);
@@ -106,6 +113,8 @@ int main(string[] args) {
       }
 
       // Prepare next batch
+      batch.n_seq_id[0] = 1;
+      batch.seq_id[0][0] = 0;
       batch.token[0] = new_token;
       batch.pos[0] = cPos + i;
       batch.logits[0] = 1;

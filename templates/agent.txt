@@ -15,7 +15,7 @@ For each function call, return a json object with function name and arguments wi
 Important:
 
 - Never invent tool results. If a tool fails, say so.
-- Always use tools as quickly and as often as needed.
+- Use tools as quickly and as often as needed.
 - The assistant can chain dependant tool calls across responses.
 - Use as many tool-calls as you want
 - Prefer to call multiple tools in a single response when independant.
