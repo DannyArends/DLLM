@@ -9,18 +9,19 @@ import std.array : appender;
 import std.format : format;
 import std.stdio : writefln, writef, writeln, write;
 
-import files : listDirectory;
-
 import console : setupConsole;
 import context : processTokens;
 import model : createContextParams;
 import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
-import vocab : tokenize, assistantFmt, toolResponseFmt;
+import vocab : tokenize, detectTemplate;
+
+import files : readFile;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL = "../LLMs/Qwen3-4B-Thinking.Q4_K_M.gguf";
-bool verbose = true;
+
+bool verbose = false;
 
 int main(string[] args) {
   llama_backend_init();
@@ -33,6 +34,7 @@ int main(string[] args) {
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
+  auto tmpl = model.detectTemplate();
 
   // Create context
   llama_context_params ctx_params = model.createContextParams();
@@ -42,9 +44,11 @@ int main(string[] args) {
   llama_sampler* sampler = createSampler();
 
   // Construct and tokenize prompt
-  string prompt = format(assistantFmt, toolsToJSON(), "What is your name?");
-  if (args[].length > 1) prompt = format(assistantFmt, toolsToJSON(), args[($-1)]);
-  if (verbose) writefln("=== Prompt ===\n%s\n===", prompt);
+  auto system = format(readFile("templates/agent.txt"), toolsToJSON());
+  auto user = (args[].length > 1)? args[($-1)] : "What is your name?";
+
+  auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
+  if (verbose) writefln("=== Prompt ===\n%s===", prompt);
   llama_token[] tokens = vocab.tokenize(prompt);
 
   // Create a batch and process prompt
@@ -67,7 +71,7 @@ int main(string[] args) {
 
       // End of generation token & other control tokens
       if (llama_vocab_is_eog(vocab, new_token)) break;
-      if (llama_vocab_get_attr(vocab, new_token) & LLAMA_TOKEN_ATTR_CONTROL) continue;
+      //if (llama_vocab_get_attr(vocab, new_token) & LLAMA_TOKEN_ATTR_CONTROL) continue;
 
       // Decode the generated tokenid to text
       int n = llama_token_to_piece(vocab, new_token, buf.ptr, buf.sizeof, 0, true);
@@ -98,7 +102,8 @@ int main(string[] args) {
     cPos -= tGen;
 
     // Execute tools, Format for LLM, and Tokenize continuation
-    auto result = toolResponseFmt.format(toolCalls.executeToolCalls());
+    auto result = tmpl.tool(response.data, toolCalls.executeToolCalls());
+    if (verbose) writefln("=== Result ===\n%s===", result);
     llama_token[] contTokens = vocab.tokenize(result);
 
     auto left = cast(int)(ctx_params.n_ctx - cPos + contTokens.length);

@@ -86,10 +86,15 @@ mixin template RegisterTools() {
   }
 }
 
-// Parse tool call from model output
-ToolCall[] parseToolCalls(string response) {
+string clean(string response){
   auto thinkEnd = response.lastIndexOf("</think>\n");
   if (thinkEnd >= 0) response = response[thinkEnd + "</think>\n".length .. $];
+  return(response);
+}
+
+// Parse tool call from model output
+ToolCall[] parseToolCalls(string response) {
+  response = response.clean();
 
   ToolCall[] calls;
   auto pattern = regex(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", "gs");
@@ -117,10 +122,11 @@ string executeTool(string toolName, JSONValue args) {
 // Execute all tool calls and format responses
 string executeToolCalls(ToolCall[] calls) {
   auto result = appender!string;
-  foreach(call; calls) {
+  foreach(i, call; calls) {
+    if (i > 0) result ~= "\n";
     string toolResult = executeTool(call.name, call.arguments);
     JSONValue response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
-    result ~= format("<tool_response>%s</tool_response>\n",response.toString());
+    result ~= format("<tool_response>%s</tool_response>",response.toString());
   }
   return result.data;
 }
