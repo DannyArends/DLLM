@@ -40,8 +40,7 @@ int main(string[] args) {
   mparams.n_threads = 4;
   mtmd_context* ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
-  mtmd_bitmap* bmp1 = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/image4.jpeg");
-  mtmd_bitmap* bmp2 = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/image7.jpeg");
+  mtmd_bitmap* img = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/photo.png");
 
 
   // Get vocab from model
@@ -57,7 +56,7 @@ int main(string[] args) {
 
   // Construct and tokenize prompt
   auto system = format(readFile("templates/agent.txt"), toolsToJSON());
-  auto user = (args[].length > 1)? args[($-1)] : "What is your name?";
+  auto user = (args[].length > 1)? args[($-1)] : "What is your name? And describe this image: <__media__>";
 
   auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
@@ -69,8 +68,8 @@ int main(string[] args) {
   text.parse_special = true;
 
   mtmd_input_chunks* chunks = mtmd_input_chunks_init();
-  mtmd_bitmap*[] bitmaps = [ bmp1, bmp2 ];
-  mtmd_tokenize(ctx_vision, chunks, &text, bitmaps.ptr, 2);
+  mtmd_bitmap*[] imgs = [ img ];
+  mtmd_tokenize(ctx_vision, chunks, &text, imgs.ptr, imgs.length);
 
   size_t[] chunkSizes;
   chunkSizes.length = mtmd_input_chunks_size(chunks);
