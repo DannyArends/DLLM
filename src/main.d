@@ -5,25 +5,24 @@
 
 import includes;
 
-import std.array : appender;
 import std.format : format;
-import std.string : toStringz;
+
 import std.stdio : writefln, writef, writeln, write;
 
 import console : setupConsole;
-import context : processTokens;
+import context : processTokens, generateTokens;
 import model : createContextParams;
 import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
 import vocab : tokenize, detectTemplate;
 
-import files : readFile;
+import files : g_ctx_vision, pendingBitmaps, readFile;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
 const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
 
-bool verbose = false;
+bool verbose = true;
 
 int main(string[] args) {
   llama_backend_init();
@@ -38,10 +37,7 @@ int main(string[] args) {
   mtmd_context_params mparams = mtmd_context_params_default();
   mparams.use_gpu = true;
   mparams.n_threads = 4;
-  mtmd_context* ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
-
-  mtmd_bitmap* img = mtmd_helper_bitmap_init_from_file(ctx_vision, "data/photo.png");
-
+  g_ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -54,100 +50,50 @@ int main(string[] args) {
    // Create sampler
   llama_sampler* sampler = createSampler();
 
-  // Construct and tokenize prompt
+  // Construct system, user, and assistant prompts and generate a full prompt
   auto system = format(readFile("templates/agent.txt"), toolsToJSON());
-  auto user = (args[].length > 1)? args[($-1)] : "What is your name? And describe this image: <__media__>";
+  auto user = (args[].length > 1)? args[($-1)] : "load the image in data/photo.png and describe it";
 
   auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
 
-  //
-  mtmd_input_text text;
-  text.text = prompt.toStringz(); //"What is in this image? <__media__>";
-  text.add_special = true;
-  text.parse_special = true;
-
-  mtmd_input_chunks* chunks = mtmd_input_chunks_init();
-  mtmd_bitmap*[] imgs = [ img ];
-  mtmd_tokenize(ctx_vision, chunks, &text, imgs.ptr, imgs.length);
-
-  size_t[] chunkSizes;
-  chunkSizes.length = mtmd_input_chunks_size(chunks);
-  for (size_t i = 0; i < chunkSizes.length; i++) {
-    chunkSizes[i] = mtmd_input_chunk_get_n_tokens(mtmd_input_chunks_get(chunks, i));
-  }
-  writefln("Total chunks: %d - %s", chunkSizes.length, chunkSizes);
-
+  // Initial position, process prompt to tokens and set in KV cache (add_special = true for BOS)
   llama_pos cPos;
-  int rc = mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, 0, 0, 2048, true, &cPos);
-  if (rc != 0) { writefln("Failed to eval chunks: %d", rc); return 1; }
-  writefln("cPos after image eval: %d", cPos);  // sanity check
+  if (!processTokens(g_ctx_vision, ctx, prompt, [], cPos, ctx_params.n_batch, true)) { 
+    writefln("Failed to eval prompt"); return 1;
+  }
 
   // Create a batch and process prompt
   llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
 
   // Agent loop
   int maxIterations = 10;
-  for (int iteration = 0; iteration < maxIterations; iteration++) {
+  for (int i = 0; i < maxIterations; i++) {
     int nLeft = cast(int)(ctx_params.n_ctx - cPos);
-    writefln("\n=== I[%d], n_ctx left: %d ===", iteration + 1, nLeft);
-    auto response = appender!string;
-
-    // Generate tokens
-    char[256] buf = 0;
-    int tGen = 0;
-    for (int i = 0; i < nLeft; i++) {
-      llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
-
-      // End of generation token & other control tokens
-      if (llama_vocab_is_eog(vocab, new_token)) break;
-      //if (llama_vocab_get_attr(vocab, new_token) & LLAMA_TOKEN_ATTR_CONTROL) continue;
-
-      // Decode the generated tokenid to text
-      int n = llama_token_to_piece(vocab, new_token, buf.ptr, buf.sizeof, 0, true);
-      if (n > 0) { 
-        string tokenText = format("%s", cast(string)buf[0..n]);
-        write(tokenText); stdout.fflush();
-        response ~= tokenText;
-      }
-
-      // Prepare next batch
-      batch.n_seq_id[0] = 1;
-      batch.seq_id[0][0] = 0;
-      batch.token[0] = new_token;
-      batch.pos[0] = cPos + i;
-      batch.logits[0] = 1;
-      batch.n_tokens = 1;
-
-      if (llama_decode(ctx, batch) != 0) break;
-      tGen++;
-    }
-    cPos += tGen;
+    writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
+    int nGen;
+    auto response = generateTokens(ctx, vocab, sampler, batch, cPos, nGen, nLeft);
     writeln();
+
     // Process tool calls, stop when no tools need to be called anymore
-    ToolCall[] toolCalls = parseToolCalls(response.data);
+    ToolCall[] toolCalls = response.parseToolCalls();
     if (toolCalls.length == 0) break;
 
     // Remove model's output (thinking + tool_call) from memory
-    llama_memory_t mem = llama_get_memory(ctx);
-    llama_memory_seq_rm(mem, 0, cPos - tGen, cPos);
-    cPos -= tGen;
+    llama_memory_seq_rm(llama_get_memory(ctx), 0, cPos - nGen, cPos);
+    cPos -= nGen;
 
-    // Execute tools, Format for LLM, and Tokenize continuation
-    auto result = tmpl.tool(response.data, toolCalls.executeToolCalls());
+    // Add cleaned response (tool_call), Execute tools, Format for LLM, and Tokenize continuation
+    auto result = tmpl.tool(response, toolCalls.executeToolCalls()) ~ tmpl.assistant();
     if (verbose) writefln("=== Result ===\n%s===", result);
-    llama_token[] contTokens = vocab.tokenize(result);
 
-    auto left = cast(int)(ctx_params.n_ctx - cPos + contTokens.length);
-    if (verbose) writefln("=== I[%d], removed %d, generated %d, n_ctx left: %d ===", iteration + 1, tGen, contTokens.length, left);
-    if (left <= 0) { writeln("Error: Out Of Context"); break; }
-
-    // Process continuation
-    if (!ctx.processTokens(batch, contTokens, cast(int)ctx_params.n_batch, cPos)) {
-      writefln("Error: Failed to process continuation");
-      break;
+    if (!processTokens(g_ctx_vision, ctx, result, pendingBitmaps, cPos, ctx_params.n_batch)) {
+      writefln("Error: Failed to process continuation"); break;
     }
-    cPos += cast(int)contTokens.length; // Update current position
+    if (verbose) {
+      writefln("=== I[%d], removed %d, generated %d, n_ctx left: %d ===", i + 1, nGen, cPos - (ctx_params.n_ctx - nLeft), ctx_params.n_ctx - cPos);
+    }
+    pendingBitmaps = [];
   }
   // Cleanup
   llama_batch_free(batch);
@@ -157,3 +103,4 @@ int main(string[] args) {
   llama_backend_free();
   return(0);
 }
+

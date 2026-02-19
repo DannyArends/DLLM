@@ -3,18 +3,34 @@
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
 
+import includes;
+
 import std.conv : to;
 import std.path : baseName, buildNormalizedPath;
 import std.json : JSONValue;
 import std.file : readText, getSize, exists, isDir, dirEntries, SpanMode, write, tempDir;
 import std.format : format;
 import std.stdio : writefln;
-import std.string : replace;
+import std.string : replace, toStringz;
 import std.uuid : randomUUID;
 
 import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
+// Set from main.d before agent loop
+mtmd_context* g_ctx_vision;
+mtmd_bitmap*[] pendingBitmaps;
+
+@Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
+string loadImage(string path) {
+  try {
+    if (g_ctx_vision is null) return "Error: vision context not initialized";
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(g_ctx_vision, path.toStringz());
+      if (bmp is null) return format("Error: failed to load image at '%s'", path);
+      pendingBitmaps ~= bmp;
+      return format("Image loaded from '%s': <__media__>", path);
+  } catch (Exception e) { return format("Error: %s", e.msg); }
+}
 
 @Tool("Read the contents of a file located at path.")
 string readFile(string path) {
@@ -73,3 +89,4 @@ string writeFile(string content) {
     return JSONValue(["path": JSONValue(path), "length": JSONValue(content.length)]).toString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
+
