@@ -19,8 +19,8 @@ import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 // Set from main.d before agent loop
-mtmd_context* g_ctx_vision;
-mtmd_bitmap*[] pendingBitmaps;
+__gshared mtmd_context* g_ctx_vision;
+__gshared mtmd_bitmap*[] pendingBitmaps;
 
 @Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
 string loadImage(string path) {
