@@ -7,11 +7,12 @@ import includes;
 
 import std.conv : to;
 import std.path : baseName, buildNormalizedPath;
+import std.process : executeShell;
 import std.json : JSONValue;
 import std.file : readText, getSize, exists, isDir, dirEntries, SpanMode, write, tempDir;
 import std.format : format;
 import std.stdio : writefln;
-import std.string : replace, toStringz;
+import std.string : replace, strip, toStringz;
 import std.uuid : randomUUID;
 
 import tools : Tool, RegisterTools;
@@ -29,6 +30,17 @@ string loadImage(string path) {
       if (bmp is null) return format("Error: failed to load image at '%s'", path);
       pendingBitmaps ~= bmp;
       return format("Image loaded from '%s': <__media__>", path);
+  } catch (Exception e) { return format("Error: %s", e.msg); }
+}
+
+@Tool("Extract text content from a PDF file at the given path.")
+string readPDF(string path) {
+  try {
+    auto result = executeShell(format("pdftotext '%s' -", path));
+    if (result.status != 0) return format("Error: pdftotext failed for '%s'", path);
+    auto text = result.output.strip();
+    if (text.length == 0) return "Warning: no text extracted, PDF may be scanned/image-based";
+    return text;
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 
