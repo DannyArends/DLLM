@@ -51,7 +51,7 @@ string readFile(string path) {
 }
 
 @Tool("Check if a file or directory exists. Returns 'true' or 'false'.")
-string fileExists(string path) {
+string pathExists(string path) {
   try {
     return exists(path) ? "true" : "false";
   } catch (Exception e) { return(format("Error: %s", e.msg)); }

@@ -52,7 +52,7 @@ int main(string[] args) {
 
   // Construct system, user, and assistant prompts and generate a full prompt
   auto system = format(readFile("templates/agent.txt"), toolsToJSON());
-  auto user = (args[].length > 1)? args[($-1)] : "load the image in data/photo.png and describe it";
+  auto user = (args[].length > 1)? args[($-1)] : "load the image in data/photo.png";
 
   auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
