@@ -16,6 +16,7 @@ import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
 import vocab : tokenize, detectTemplate;
 
+import gpt : testGPT;
 import files : g_ctx_vision, pendingBitmaps, readFile;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
@@ -27,6 +28,8 @@ bool verbose = true;
 int main(string[] args) {
   llama_backend_init();
   setupConsole();
+
+  testGPT();
 
   // Load model
   llama_model_params model_params = llama_model_default_params();
