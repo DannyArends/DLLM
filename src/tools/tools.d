@@ -120,15 +120,15 @@ string executeTool(string toolName, JSONValue args) {
 }
 
 // Execute all tool calls and format responses
-string executeToolCalls(ToolCall[] calls) {
-  auto result = appender!string;
+string[] executeToolCalls(ToolCall[] calls) {
+  string[] result;
   foreach(i, call; calls) {
     if (i > 0) result ~= "\n";
     string toolResult = executeTool(call.name, call.arguments);
     JSONValue response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
-    result ~= format("<tool_response>%s</tool_response>",response.toString());
+    result ~= response.toString();
   }
-  return result.data;
+  return result;
 }
 
 // Generate tools JSON for system prompt

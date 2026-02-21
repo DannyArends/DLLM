@@ -5,42 +5,65 @@
 
 import includes;
 
-import core.stdc.string : strlen;
+import std.stdio : writefln;
+import std.string : toStringz, fromStringz;
+import std.format : format;
 import std.algorithm.searching : canFind;
 
 import tools : clean;
 
 struct ChatTemplate {
-  string roleStart;
-  string roleEnd;
-  string sep;
+  llama_vocab* vocab;
+  const(char)* tmplStr;           // from llama_model_chat_template(model, null)
+  llama_chat_message[] messages;  // persistent history (keep strings alive!)
 
-  static ChatTemplate chatML() { return ChatTemplate("<|im_start|>", "<|im_end|>", "\n"); }
-  static ChatTemplate llama3() { return ChatTemplate("<|start_header_id|>", "<|end_header_id|>", "\n\n"); }
+  this(llama_vocab* vocab, const(char)* tmplStr) {
+    this.vocab = vocab;
+    this.tmplStr = tmplStr;
+  }
 
-  string wrap(string role, string content) { return(roleStart ~ role ~ sep ~ content ~ roleEnd ~ sep); }
-  string assistant() { return(roleStart ~ "assistant" ~ sep); }
-  string tool(string response, string toolResult) { return(response.clean() ~ roleEnd ~ wrap("tool", toolResult)); }
+  void add(string role, string content) {
+    messages ~= llama_chat_message(role.toStringz, content.toStringz);
+  }
+
+  string render(bool addAss = false) {
+    char[] buf = new char[65536];
+    int n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, cast(int)buf.length);
+    if (n > buf.length) {
+      buf.length = n;
+      n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, n);
+    }
+    return buf[0..n].idup;
+  }
+
+  // If the model a thiking model ?
+  bool canThink() {
+    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) return true;
+    return false;
+  }
+
+  // Returns only the newly added portion
+  string delta(size_t prevLen, bool addAss = false) { return render(addAss)[prevLen..$]; }
+  string thinkBootstrap(size_t thinkBudget = 512) {
+    if(!canThink) return "";
+    return(format("<think>\nBudget: %d tokens. Be concise.\n", thinkBudget)); 
+  }
+  
+  // Does a string translate into a single llama_token
+  llama_token getToken(string token, bool add_special = true, bool parse_special = true) {
+    llama_token[] result = tokenize(vocab, token, add_special, parse_special);
+    if (result.length == 1 && result[0] != LLAMA_TOKEN_NULL) return result[0];
+    return(LLAMA_TOKEN_NULL);
+  }
 }
 
 // Tokenize prompt
-llama_token[] tokenize(llama_vocab* vocab, string prompt) {
-  int n_tokens = -llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, null, 0, true, true);
+llama_token[] tokenize(llama_vocab* vocab, string prompt, bool add_special = true, bool parse_special = true) {
+  int n_tokens = -llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, null, 0, add_special, parse_special);
   llama_token[] tokens;
   tokens.length = n_tokens;
-  llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, tokens.ptr, n_tokens, true, true);
+  llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, tokens.ptr, n_tokens, add_special, parse_special);
   return(tokens);
 }
 
-// Detect chat template used by the model
-ChatTemplate detectTemplate(llama_model* model) {
-  const(char)* raw = llama_model_chat_template(model, null);
-  if (raw is null) return ChatTemplate.chatML(); // fallback
-
-  string t = cast(string)(raw[0..strlen(raw)]);
-
-  if (t.canFind("<|im_start|>"))       return ChatTemplate.chatML();
-  if (t.canFind("<|start_header_id|>")) return ChatTemplate.llama3();
-  return ChatTemplate.chatML();
-}
 

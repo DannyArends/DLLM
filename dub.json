@@ -26,8 +26,8 @@
 				"-L-static-libstdc++", "-L-static-libgcc", "-L-static", "-l:libgomp.a",
 				"-L-dynamic", "-lpthread", "-ldl"],
 		"libs-linux": ["stdc++", "cuda", "cudart", "cublas", "culibos"],
-		"libs-windows-x86_64": ["llama", "mtmd"],
-		"lflags-windows-x86_64": ["/LIBPATH:./deps/llama.cpp/build/src/Debug", "/LIBPATH:./deps/llama.cpp/build/tools/mtmd/Debug"],
+		"libs-windows-x86_64": ["llama", "mtmd", "ggml", "ggml-base", "ggml-cpu"],
+		"lflags-windows-x86_64": ["/LIBPATH:./deps/llama.cpp/build/src/Debug", "/LIBPATH:./deps/llama.cpp/build/tools/mtmd/Debug", "/LIBPATH:./deps/llama.cpp/build/ggml/src/Debug"],
 		"copyFiles-windows-x86_64": [
 			"./deps/llama.cpp/build/bin/Debug/llama.dll",
 			"./deps/llama.cpp/build/bin/Debug/ggml.dll",

@@ -14,10 +14,10 @@ import context : processTokens, generateTokens;
 import model : createContextParams;
 import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
-import vocab : tokenize, detectTemplate;
+import vocab : ChatTemplate;
 
-import gpt : testGPT;
 import files : g_ctx_vision, pendingBitmaps, readFile;
+import tools : clean;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
@@ -28,8 +28,6 @@ bool verbose = true;
 int main(string[] args) {
   llama_backend_init();
   setupConsole();
-
-  testGPT();
 
   // Load model
   llama_model_params model_params = llama_model_default_params();
@@ -44,7 +42,6 @@ int main(string[] args) {
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
-  auto tmpl = model.detectTemplate();
 
   // Create context
   llama_context_params ctx_params = model.createContextParams();
@@ -54,10 +51,14 @@ int main(string[] args) {
   llama_sampler* sampler = createSampler();
 
   // Construct system, user, and assistant prompts and generate a full prompt
-  auto system = format(readFile("templates/agent.txt"), toolsToJSON());
+  size_t thinkBudget = 1024;
+  auto system = format(readFile("templates/agent.txt"), toolsToJSON(), thinkBudget);
   auto user = (args[].length > 1)? args[($-1)] : "load the image in data/photo.png";
 
-  auto prompt = tmpl.wrap("system", system) ~ tmpl.wrap("user", user) ~ tmpl.assistant();
+  auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
+  tmpl.add("system", system);
+  tmpl.add("user", user);
+  auto prompt = tmpl.render(true) ~ tmpl.thinkBootstrap(thinkBudget); // addAss=true adds assistant prefix
   if (verbose) writefln("=== Prompt ===\n%s===", prompt);
 
   // Initial position, process prompt to tokens and set in KV cache (add_special = true for BOS)
@@ -75,7 +76,7 @@ int main(string[] args) {
     int nLeft = cast(int)(ctx_params.n_ctx - cPos);
     writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
     int nGen;
-    auto response = generateTokens(ctx, vocab, sampler, batch, cPos, nGen, nLeft);
+    auto response = generateTokens(ctx, tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
     writeln();
 
     // Process tool calls, stop when no tools need to be called anymore
@@ -87,7 +88,10 @@ int main(string[] args) {
     cPos -= nGen;
 
     // Add cleaned response (tool_call), Execute tools, Format for LLM, and Tokenize continuation
-    auto result = tmpl.tool(response, toolCalls.executeToolCalls()) ~ tmpl.assistant();
+    size_t prevLen = tmpl.render(false).length;
+    tmpl.add("assistant", response.clean());
+    foreach(result; toolCalls.executeToolCalls()){ tmpl.add("tool", result); }
+    auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
     if (verbose) writefln("=== Result ===\n%s===", result);
 
     if (!processTokens(g_ctx_vision, ctx, result, pendingBitmaps, cPos, ctx_params.n_batch)) {
