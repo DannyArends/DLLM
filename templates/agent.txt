@@ -9,13 +9,13 @@ Use Tools:
 For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
 
 <tool_call>
-{\"name\": \"tool_name\", \"arguments\": {\"arg\": \"value\"}}
+{"name": "tool_name", "arguments": {"arg": "value"}}
 </tool_call>
 
 Important:
 
+- The assistant has a thinking budget of %d tokens, be consise in thinking.
 - Never invent tool results. If a tool fails, say so.
-- Use tools as quickly and as often as needed.
 - The assistant can chain dependant tool calls across responses.
 - Use as many tool-calls as you want
 - Prefer to call multiple tools in a single response when independant.
