@@ -21,6 +21,7 @@ bool processTokens(mtmd_context* ctx_vision, llama_context* ctx,
   inp.parse_special = true;
 
   mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+  scope(exit) mtmd_input_chunks_free(chunks);
   mtmd_tokenize(ctx_vision, chunks, &inp, bitmaps.ptr, bitmaps.length);
   if (mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, cPos, 0, n_batch, true, &cPos) != 0) {
     return false;
@@ -40,7 +41,7 @@ string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* samp
     llama_token token = llama_sampler_sample(sampler, ctx, -1);
     if (llama_vocab_is_eog(tmpl.vocab, token)) break;
 
-    if (!thinkDone && tmpl.canThink()) {
+    if (!thinkDone && tmpl.canThink) {
       if (token == thinkEndToken) { thinkDone = true; }
       else if (++thinkTokens >= thinkBudget) {
         token = thinkEndToken;

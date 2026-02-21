@@ -22,28 +22,25 @@ struct ChatTemplate {
     this.tmplStr = tmplStr;
   }
 
-  void add(string role, string content) {
-    messages ~= llama_chat_message(role.toStringz, content.toStringz);
-  }
+  void add(string role, string content) { messages ~= llama_chat_message(role.toStringz, content.toStringz); }
 
   string render(bool addAss = false) {
-    char[] buf = new char[65536];
-    int n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, cast(int)buf.length);
-    if (n > buf.length) {
-      buf.length = n;
-      n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, n);
-    }
+    int n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, null, 0);
+    char[] buf = new char[n];
+    llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, n);
     return buf[0..n].idup;
   }
 
   // If the model a thiking model ?
-  bool canThink() {
+  @property bool canThink() {
     if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) return true;
     return false;
   }
 
   // Returns only the newly added portion
   string delta(size_t prevLen, bool addAss = false) { return render(addAss)[prevLen..$]; }
+
+  // Returns the bootstrap line for the models thinking budget
   string thinkBootstrap(size_t thinkBudget = 512) {
     if(!canThink) return "";
     return(format("<think>\nBudget: %d tokens. Be concise.\n", thinkBudget)); 

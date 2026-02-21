@@ -6,38 +6,24 @@
 import includes;
 
 import std.format : format;
+import std.stdio : writefln;
 
-import std.stdio : writefln, writef, writeln, write;
-
-import console : setupConsole;
-import context : processTokens, generateTokens;
-import model : createContextParams;
+import context : processTokens;
+import model : createContextParams, loadLlamaModel;
 import sampler : createSampler;
-import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
+import tools : toolsToJSON;
 import vocab : ChatTemplate;
 
-import agent : agent;
+import agent : agent, agentStep;
 import files : readFile;
-import tools : clean;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
 const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
 
 int main(string[] args) {
-  llama_backend_init();
-  setupConsole();
-
-  // Load model
-  llama_model_params model_params = llama_model_default_params();
-  model_params.n_gpu_layers = -1;
-  llama_model* model = llama_model_load_from_file(LLM_AGENT_MODEL, model_params);
-
-  // Load MTMD model
-  mtmd_context_params mparams = mtmd_context_params_default();
-  mparams.use_gpu = true;
-  mparams.n_threads = 4;
-  agent.ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
+  // Setup Llama and Load model
+  llama_model* model = loadLlamaModel(LLM_AGENT_MODEL);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -48,6 +34,12 @@ int main(string[] args) {
 
    // Create sampler
   llama_sampler* sampler = createSampler();
+
+  // Load MTMD model
+  mtmd_context_params mparams = mtmd_context_params_default();
+  mparams.use_gpu = true;
+  mparams.n_threads = 4;
+  agent.ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
   // Construct system, user, and assistant prompts and generate a full prompt
   size_t thinkBudget = 1024;
@@ -72,34 +64,7 @@ int main(string[] args) {
   // Agent loop
   int maxIterations = 10;
   for (int i = 0; i < maxIterations; i++) {
-    int nLeft = cast(int)(ctx_params.n_ctx - cPos);
-    writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
-    int nGen;
-    auto response = generateTokens(ctx, tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
-    writeln();
-
-    // Process tool calls, stop when no tools need to be called anymore
-    ToolCall[] toolCalls = response.parseToolCalls();
-    if (toolCalls.length == 0) break;
-
-    // Remove model's output (thinking + tool_call) from memory
-    llama_memory_seq_rm(llama_get_memory(ctx), 0, cPos - nGen, cPos);
-    cPos -= nGen;
-
-    // Add cleaned response (tool_call), Execute tools, Format for LLM, and Tokenize continuation
-    size_t prevLen = tmpl.render(false).length;
-    tmpl.add("assistant", response.clean());
-    foreach(result; toolCalls.executeToolCalls()){ tmpl.add("tool", result); }
-    auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-    if (agent.verbose) writefln("=== Result ===\n%s===", result);
-
-    if (!processTokens(agent.ctx_vision, ctx, result, agent.pendingBitmaps, cPos, ctx_params.n_batch)) {
-      writefln("Error: Failed to process continuation"); break;
-    }
-    if (agent.verbose) {
-      writefln("=== I[%d], removed %d, generated %d, n_ctx left: %d ===", i + 1, nGen, cPos - (ctx_params.n_ctx - nLeft), ctx_params.n_ctx - cPos);
-    }
-    agent.pendingBitmaps = [];
+    if (!agentStep(ctx, tmpl, sampler, batch, i, cPos, ctx_params, thinkBudget)) break;
   }
   // Cleanup
   llama_batch_free(batch);

@@ -5,6 +5,8 @@
 
 import includes;
 
+import console : setupConsole;
+
 // Create context
 llama_context_params createContextParams(llama_model* model, uint n_ctx = 16384, uint n_batch = 2048, uint n_threads = 8) {
   llama_context_params ctx_params = llama_context_default_params();
@@ -17,4 +19,14 @@ llama_context_params createContextParams(llama_model* model, uint n_ctx = 16384,
   ctx_params.no_perf = true;
   ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
   return(ctx_params);
+}
+
+llama_model* loadLlamaModel(const(char)* path) {
+  llama_backend_init();
+  setupConsole();
+
+  // Load model
+  llama_model_params model_params = llama_model_default_params();
+  model_params.n_gpu_layers = -1;
+  return(llama_model_load_from_file(path, model_params));
 }
