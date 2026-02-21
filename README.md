@@ -17,11 +17,11 @@ No Python overhead with direct llama.cpp C API bindings using a modular design i
 ### Built-in Tools 🔧
 Tools are auto-registered via UDA (`@Tool`) and exposed to the model as JSON. Available tools:
 
-**Text & Encoding**: `countWords`, `wordLength`, `nOccurrences`, `base64Encode`, `base64Decode`, `md5Hash`, `sha256Hash`, `generateUUID`
+**Text & Encoding**: `base64Encode`, `base64Decode`, `md5Hash`, `sha256Hash`
 
-**Files & System**: `readFile`, `writeFile`, `listDirectory`, `pathExists`, `fileSize`, `readPDF`
+**Files & System**: `readFile`, `writeFile`, `listDirectory`, `pathExists`, `readPDF`
 
-**Date & Time**: `currentTime`, `currentDate`, `currentTimestamp`, `currentDayOfWeek`, `dayOfWeek`, `addDays`, `daysBetween`, `isDatePast`, `formatTimestamp`
+**Date & Time**: `currentDate`, `currentDayOfWeek`, `addDays`, `daysBetween`
 
 **Web & Images**: `webFetch`, `webSearch`, `downloadImage`, `loadImage`
 
