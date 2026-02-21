@@ -24,6 +24,8 @@ Execute with prompt
   dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
   dub -- "Read the file dub.json, and summarize in a single line what the file is about."
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
+  dub -- "What date is it today ? and how is the weather today in Newcastle upon Tyne (UK) ?"
+  dub -- "Download the image at https://picsum.photos/400, load it, and describe it"
 ```
 
 ### Contributing 🙌

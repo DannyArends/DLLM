@@ -13,7 +13,7 @@ import std.file : readText, getSize, exists, isDir, dirEntries, SpanMode, write,
 import std.format : format;
 import std.stdio : writefln;
 import std.string : replace, strip, toStringz;
-import std.uuid : randomUUID;
+import std.random : uniform;
 
 import tools : Tool, RegisterTools;
 
@@ -92,10 +92,15 @@ string listDirectory(string path) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
+@Tool("Returns a unique temporary file path with the given extension")
+string getTempPath(string extension = "txt"){
+  return(buildNormalizedPath(format("%sagent_%08x.%s", tempDir(), uniform!uint(), extension)));
+}
+
 @Tool("Write content to a temporary file located at path. Returns a json containing the file path and file size in bytes.")
 string writeFile(string content) {
   try {
-    string path = buildNormalizedPath(format("%sagent_%s.txt", tempDir(), randomUUID()));
+    string path = getTempPath();
     path.write(content);
     writefln("=== Wrote to '%s'", path);
     return JSONValue(["path": JSONValue(path), "length": JSONValue(content.length)]).toString();

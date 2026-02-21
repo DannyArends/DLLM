@@ -7,13 +7,14 @@ import std.array : appender;
 import std.conv : to;
 import std.json : JSONValue, parseJSON;
 import std.format : format;
-import std.net.curl : get, HTTP;
+import std.path : extension;
+import std.net.curl : download, get, HTTP;
 import std.regex : regex, replaceAll;
 import std.stdio : writefln;
 import std.string : strip;
 import std.uri : encodeComponent;
 
-import files : writeFile;
+import files : writeFile, getTempPath;
 import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
@@ -83,4 +84,17 @@ string webSearch(string query, string max_results) {
 
     return results.length > 0 ? JSONValue(results).toString() : "No results found";
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
+}
+
+@Tool("Download an image from a URL to a local temporary file, returns the local file path")
+string downloadImage(string url) {
+  try {
+    string ext = url.extension;
+    if (ext.length == 0 || ext.length > 5) ext = "png"; // fallback for no/invalid extension
+    string path = getTempPath(ext);
+    download(url, path);
+    return path;
+  } catch (Exception e) {
+    return "Error downloading image: " ~ e.msg;
+  }
 }
