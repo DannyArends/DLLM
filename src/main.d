@@ -8,6 +8,7 @@ import includes;
 import std.format : format;
 import std.stdio : writefln;
 
+import console : setupConsole;
 import context : processTokens;
 import model : createContextParams, loadLlamaModel;
 import sampler : createSampler;
@@ -22,6 +23,10 @@ const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
 const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
 
 int main(string[] args) {
+  // Initialize backend and setup console for UTF output
+  llama_backend_init();
+  setupConsole();
+
   // Setup Llama and Load model
   llama_model* model = loadLlamaModel(LLM_AGENT_MODEL);
 
@@ -44,7 +49,7 @@ int main(string[] args) {
   // Construct system, user, and assistant prompts and generate a full prompt
   size_t thinkBudget = 1024;
   auto system = format(readFile("templates/agent.txt"), toolsToJSON(), thinkBudget);
-  auto user = (args[].length > 1)? args[($-1)] : "load the image in data/photo.png";
+  auto user = (args.length > 1)? args[($-1)] : "load the image in data/photo.png";
 
   auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
   tmpl.add("system", system);

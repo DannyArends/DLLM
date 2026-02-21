@@ -20,10 +20,10 @@ struct Agent {
 __gshared Agent agent = Agent();
 
 bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler,
-               ref llama_batch batch, size_t i, ref llama_pos cPos, llama_context_params ctx_params,
+               ref llama_batch batch, size_t i, ref llama_pos cPos, const llama_context_params ctx_params,
                size_t thinkBudget) {
   int nLeft = cast(int)(ctx_params.n_ctx - cPos);
-  writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
+  if (agent.verbose) writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
   int nGen;
   auto response = ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
   writeln();

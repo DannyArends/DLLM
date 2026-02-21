@@ -5,7 +5,7 @@
 
 import includes;
 
-import std.stdio : write, writeln;
+import std.stdio : write, writeln, stdout;
 import std.array : appender;
 import std.string : toStringz;
 
@@ -24,8 +24,8 @@ bool processTokens(llama_context* ctx, mtmd_context* vision,
   scope(exit) mtmd_input_chunks_free(chunks);
 
   mtmd_tokenize(vision, chunks, &inp, bitmaps.ptr, bitmaps.length);
-  if (mtmd_helper_eval_chunks(vision, ctx, chunks, cPos, 0, n_batch, true, &cPos) != 0) return(false);
-  return(true);
+  if (mtmd_helper_eval_chunks(vision, ctx, chunks, cPos, 0, n_batch, true, &cPos) == 0) return(true);
+  return(false);
 }
 
 string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* sampler,
@@ -51,7 +51,7 @@ string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* samp
     size_t n = llama_token_to_piece(tmpl.vocab, token, buf.ptr, buf.sizeof, 0, true);
     if (n > 0) {
       string piece = cast(string)buf[0..n];
-      write(piece); stdout.fflush();
+      write(piece); stdout.flush();
       response ~= piece;
     }
 

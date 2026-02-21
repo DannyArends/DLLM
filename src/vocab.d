@@ -14,10 +14,12 @@ struct ChatTemplate {
   llama_vocab* vocab;
   const(char)* tmplStr;           // from llama_model_chat_template(model, null)
   llama_chat_message[] messages;  // persistent history (keep strings alive!)
+  bool canThink = false;  // set once in constructor
 
   this(llama_vocab* vocab, const(char)* tmplStr) {
     this.vocab = vocab;
     this.tmplStr = tmplStr;
+    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) canThink = true;
   }
 
   void add(string role, string content) { messages ~= llama_chat_message(role.toStringz, content.toStringz); }
@@ -27,12 +29,6 @@ struct ChatTemplate {
     char[] buf = new char[n];
     llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, n);
     return(buf[0..n].idup);
-  }
-
-  // If the model a thiking model ?
-  @property bool canThink() {
-    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) return(true);
-    return(false);
   }
 
   // Returns only the newly added portion
