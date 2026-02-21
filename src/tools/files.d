@@ -16,19 +16,17 @@ import std.string : replace, strip, toStringz;
 import std.random : uniform;
 
 import tools : Tool, RegisterTools;
+import agent : agent;
 
 mixin RegisterTools;
-// Set from main.d before agent loop
-__gshared mtmd_context* g_ctx_vision;
-__gshared mtmd_bitmap*[] pendingBitmaps;
 
 @Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
 string loadImage(string path) {
   try {
-    if (g_ctx_vision is null) return "Error: vision context not initialized";
-      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(g_ctx_vision, path.toStringz());
+    if (agent.ctx_vision is null) return "Error: vision context not initialized";
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.ctx_vision, path.toStringz());
       if (bmp is null) return format("Error: failed to load image at '%s'", path);
-      pendingBitmaps ~= bmp;
+      agent.pendingBitmaps ~= bmp;
       return format("Image loaded from '%s': <__media__>", path);
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }

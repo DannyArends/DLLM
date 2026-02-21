@@ -16,14 +16,13 @@ import sampler : createSampler;
 import tools : ToolCall, toolsToJSON, parseToolCalls, executeToolCalls;
 import vocab : ChatTemplate;
 
-import files : g_ctx_vision, pendingBitmaps, readFile;
+import agent : agent;
+import files : readFile;
 import tools : clean;
 
 const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
 const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
-
-bool verbose = true;
 
 int main(string[] args) {
   llama_backend_init();
@@ -38,7 +37,7 @@ int main(string[] args) {
   mtmd_context_params mparams = mtmd_context_params_default();
   mparams.use_gpu = true;
   mparams.n_threads = 4;
-  g_ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
+  agent.ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
@@ -59,11 +58,11 @@ int main(string[] args) {
   tmpl.add("system", system);
   tmpl.add("user", user);
   auto prompt = tmpl.render(true) ~ tmpl.thinkBootstrap(thinkBudget); // addAss=true adds assistant prefix
-  if (verbose) writefln("=== Prompt ===\n%s===", prompt);
+  if (agent.verbose) writefln("=== Prompt ===\n%s===", prompt);
 
   // Initial position, process prompt to tokens and set in KV cache (add_special = true for BOS)
   llama_pos cPos;
-  if (!processTokens(g_ctx_vision, ctx, prompt, [], cPos, ctx_params.n_batch, true)) { 
+  if (!processTokens(agent.ctx_vision, ctx, prompt, [], cPos, ctx_params.n_batch, true)) { 
     writefln("Failed to eval prompt"); return 1;
   }
 
@@ -92,15 +91,15 @@ int main(string[] args) {
     tmpl.add("assistant", response.clean());
     foreach(result; toolCalls.executeToolCalls()){ tmpl.add("tool", result); }
     auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-    if (verbose) writefln("=== Result ===\n%s===", result);
+    if (agent.verbose) writefln("=== Result ===\n%s===", result);
 
-    if (!processTokens(g_ctx_vision, ctx, result, pendingBitmaps, cPos, ctx_params.n_batch)) {
+    if (!processTokens(agent.ctx_vision, ctx, result, agent.pendingBitmaps, cPos, ctx_params.n_batch)) {
       writefln("Error: Failed to process continuation"); break;
     }
-    if (verbose) {
+    if (agent.verbose) {
       writefln("=== I[%d], removed %d, generated %d, n_ctx left: %d ===", i + 1, nGen, cPos - (ctx_params.n_ctx - nLeft), ctx_params.n_ctx - cPos);
     }
-    pendingBitmaps = [];
+    agent.pendingBitmaps = [];
   }
   // Cleanup
   llama_batch_free(batch);
