@@ -39,7 +39,7 @@ int main(string[] args) {
   mtmd_context_params mparams = mtmd_context_params_default();
   mparams.use_gpu = true;
   mparams.n_threads = 4;
-  agent.ctx_vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
+  agent.vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
 
   // Construct system, user, and assistant prompts and generate a full prompt
   size_t thinkBudget = 1024;
@@ -54,7 +54,7 @@ int main(string[] args) {
 
   // Initial position, process prompt to tokens and set in KV cache (add_special = true for BOS)
   llama_pos cPos;
-  if (!processTokens(agent.ctx_vision, ctx, prompt, [], cPos, ctx_params.n_batch, true)) { 
+  if (!ctx.processTokens(agent.vision, prompt, [], cPos, ctx_params.n_batch, true)) { 
     writefln("Failed to eval prompt"); return 1;
   }
 
@@ -64,7 +64,7 @@ int main(string[] args) {
   // Agent loop
   int maxIterations = 10;
   for (int i = 0; i < maxIterations; i++) {
-    if (!agentStep(ctx, tmpl, sampler, batch, i, cPos, ctx_params, thinkBudget)) break;
+    if (!ctx.agentStep(tmpl, sampler, batch, i, cPos, ctx_params, thinkBudget)) break;
   }
   // Cleanup
   llama_batch_free(batch);

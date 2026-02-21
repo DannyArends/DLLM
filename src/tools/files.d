@@ -23,8 +23,8 @@ mixin RegisterTools;
 @Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
 string loadImage(string path) {
   try {
-    if (agent.ctx_vision is null) return "Error: vision context not initialized";
-      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.ctx_vision, path.toStringz());
+    if (agent.vision is null) return "Error: vision context not initialized";
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz());
       if (bmp is null) return format("Error: failed to load image at '%s'", path);
       agent.pendingBitmaps ~= bmp;
       return format("Image loaded from '%s': <__media__>", path);

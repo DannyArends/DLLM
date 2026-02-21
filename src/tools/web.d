@@ -46,15 +46,10 @@ string webFetch(string url) {
     content = replaceAll(content, regex(r"\s+"), " ");
     content = content.strip();
 
-    // Limit size
-    const int MAX_SIZE = 50_000;
-    if (content.length > MAX_SIZE) {
-      content = content[0..MAX_SIZE];
-      //writefln("=== Content truncated to %d chars", MAX_SIZE);
-    }
+    const int MAX_SIZE = 50_000;    // Limit size
+    if (content.length > MAX_SIZE) { content = content[0..MAX_SIZE]; }
 
-    //writefln("=== Extracted %d chars", content.length);
-    return writeFile(content);
+    return(writeFile(content));
   } catch (Exception e) { return "Error: " ~ e.msg; }
 }
 
@@ -82,7 +77,7 @@ string webSearch(string query, string max_results) {
       }
     }
 
-    return results.length > 0 ? JSONValue(results).toString() : "No results found";
+    return(results.length > 0 ? JSONValue(results).toString() : "No results found");
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
@@ -93,8 +88,8 @@ string downloadImage(string url) {
     if (ext.length == 0 || ext.length > 5) ext = "png"; // fallback for no/invalid extension
     string path = getTempPath(ext);
     download(url, path);
-    return path;
+    return(path);
   } catch (Exception e) {
-    return "Error downloading image: " ~ e.msg;
+    return("Error downloading image: " ~ e.msg);
   }
 }

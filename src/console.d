@@ -5,7 +5,7 @@
 
 import includes;
 
-import std.stdio : writefln, writef;
+import std.stdio : writefln;
 import std.string : fromStringz;
 
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);

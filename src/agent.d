@@ -13,7 +13,7 @@ import vocab : ChatTemplate;
 
 struct Agent {
   bool verbose = false;
-  mtmd_context* ctx_vision;
+  mtmd_context* vision;
   mtmd_bitmap*[] pendingBitmaps = [];
 }
 
@@ -25,7 +25,7 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
   int nLeft = cast(int)(ctx_params.n_ctx - cPos);
   writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
   int nGen;
-  auto response = generateTokens(ctx, tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
+  auto response = ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
   writeln();
 
   ToolCall[] toolCalls = response.parseToolCalls();
@@ -40,10 +40,10 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
   auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
   if (agent.verbose) writefln("=== Result ===\n%s===", result);
 
-  if (!processTokens(agent.ctx_vision, ctx, result, agent.pendingBitmaps, cPos, ctx_params.n_batch)) {
-    writefln("Error: Failed to process continuation");
-    return false;
+  if (!ctx.processTokens(agent.vision, result, agent.pendingBitmaps, cPos, ctx_params.n_batch)) {
+    writefln("Error: Failed to process continuation tokens");
+    return(false);
   }
   agent.pendingBitmaps = [];
-  return true;
+  return(true);
 }

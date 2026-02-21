@@ -106,16 +106,16 @@ ToolCall[] parseToolCalls(string response) {
       writefln("Failed to parse tool call: %s", e.msg);
     }
   }
-  return calls;
+  return(calls);
 }
 
 // Execute tool by name with JSON arguments
 string executeTool(string toolName, JSONValue args) {
   try {
     foreach(tool; ALL_TOOLS) {
-      if (tool.name == toolName) return tool.executor(args);
+      if (tool.name == toolName) return(tool.executor(args));
     }
-    return "Error: unknown tool '" ~ toolName ~ "'";
+    return("Error: unknown tool '" ~ toolName ~ "'");
   } catch (Exception e) { return(format("Error executing tool: %s", e.msg)); }
 }
 
@@ -128,7 +128,7 @@ string[] executeToolCalls(ToolCall[] calls) {
     JSONValue response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
     result ~= response.toString();
   }
-  return result;
+  return(result);
 }
 
 // Generate tools JSON for system prompt
@@ -153,5 +153,5 @@ string toolsToJSON() {
     result ~= toolJson.toString();
   }
   result ~= "]";
-  return result.data;
+  return(result.data);
 }

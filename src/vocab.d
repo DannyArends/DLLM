@@ -5,10 +5,8 @@
 
 import includes;
 
-import std.stdio : writefln;
-import std.string : toStringz, fromStringz;
+import std.string : toStringz;
 import std.format : format;
-import std.algorithm.searching : canFind;
 
 import tools : clean;
 
@@ -28,13 +26,13 @@ struct ChatTemplate {
     int n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, null, 0);
     char[] buf = new char[n];
     llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, buf.ptr, n);
-    return buf[0..n].idup;
+    return(buf[0..n].idup);
   }
 
   // If the model a thiking model ?
   @property bool canThink() {
-    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) return true;
-    return false;
+    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) return(true);
+    return(false);
   }
 
   // Returns only the newly added portion
@@ -42,14 +40,14 @@ struct ChatTemplate {
 
   // Returns the bootstrap line for the models thinking budget
   string thinkBootstrap(size_t thinkBudget = 512) {
-    if(!canThink) return "";
+    if(!canThink) return("");
     return(format("<think>\nBudget: %d tokens. Be concise.\n", thinkBudget)); 
   }
-  
+
   // Does a string translate into a single llama_token
   llama_token getToken(string token, bool add_special = true, bool parse_special = true) {
     llama_token[] result = tokenize(vocab, token, add_special, parse_special);
-    if (result.length == 1 && result[0] != LLAMA_TOKEN_NULL) return result[0];
+    if (result.length == 1 && result[0] != LLAMA_TOKEN_NULL) return(result[0]);
     return(LLAMA_TOKEN_NULL);
   }
 }
@@ -62,5 +60,3 @@ llama_token[] tokenize(llama_vocab* vocab, string prompt, bool add_special = tru
   llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, tokens.ptr, n_tokens, add_special, parse_special);
   return(tokens);
 }
-
-

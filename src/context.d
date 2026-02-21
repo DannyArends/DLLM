@@ -12,7 +12,7 @@ import std.string : toStringz;
 import vocab : ChatTemplate;
 
 // Tokenize text (with optional images) and eval into KV cache, updating cPos
-bool processTokens(mtmd_context* ctx_vision, llama_context* ctx, 
+bool processTokens(llama_context* ctx, mtmd_context* vision,
                    string text, mtmd_bitmap*[] bitmaps, 
                    ref llama_pos cPos, int n_batch, bool add_special = false) {
   mtmd_input_text inp;
@@ -22,11 +22,10 @@ bool processTokens(mtmd_context* ctx_vision, llama_context* ctx,
 
   mtmd_input_chunks* chunks = mtmd_input_chunks_init();
   scope(exit) mtmd_input_chunks_free(chunks);
-  mtmd_tokenize(ctx_vision, chunks, &inp, bitmaps.ptr, bitmaps.length);
-  if (mtmd_helper_eval_chunks(ctx_vision, ctx, chunks, cPos, 0, n_batch, true, &cPos) != 0) {
-    return false;
-  }
-  return true;
+
+  mtmd_tokenize(vision, chunks, &inp, bitmaps.ptr, bitmaps.length);
+  if (mtmd_helper_eval_chunks(vision, ctx, chunks, cPos, 0, n_batch, true, &cPos) != 0) return(false);
+  return(true);
 }
 
 string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* sampler,
@@ -64,6 +63,6 @@ string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* samp
   }
   cPos += nGen;
   writeln();
-  return response.data;
+  return(response.data);
 }
 
