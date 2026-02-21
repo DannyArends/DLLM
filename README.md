@@ -1,13 +1,25 @@
 ## DLLM - D Language Interface for llama.cpp ✨
-A minimal, clean D language interface for running a local machine LLM agent inference using [importC](https://dlang.org/spec/importc.html) 
-around [llama.cpp](https://github.com/ggerganov/llama.cpp).
+A minimal, clean D language interface for running a local multimodal LLM agent using [importC](https://dlang.org/spec/importc.html) 
+around [llama.cpp](https://github.com/ggerganov/llama.cpp). DLLM exposes the full llama.cpp C API directly from D with no Python 
+overhead, supporting vision-language models via the mtmd API, automatic chat template detection, and an extensible tool-calling 
+agent loop.
 
 ### Features 🚀
 No Python overhead with direct llama.cpp C API bindings using a modular design in the D language.
 - **GPU acceleration** - Full CUDA support with automatic offloading
+- **Multimodal** - Vision-language model support via the mtmd API
+- **Chat template detection** - Automatic model-agnostic prompt formatting
 - **UTF-8 handling** - Proper emoji and multi-byte character support on Windows
 - **Efficient batching** - Handles prompts with automatic chunking, cleans context on tool execution
 - **Low memory footprint** - Q8_0 KV cache quantization
+- **Thinking budget** - Optional think-token bootstrapping to limit reasoning length
+
+### Built-in Tools 🔧
+Tools are auto-registered via UDA (`@Tool`) and exposed to the model as JSON. Available tools:
+**Text & Encoding**: `countWords`, `wordLength`, `nOccurrences`, `base64Encode`, `base64Decode`, `md5Hash`, `sha256Hash`, `generateUUID`
+**Files & System**: `readFile`, `writeFile`, `listDirectory`, `pathExists`, `fileSize`, `readPDF`
+**Date & Time**: `currentTime`, `currentDate`, `currentTimestamp`, `currentDayOfWeek`, `dayOfWeek`, `addDays`, `daysBetween`, `isDatePast`, `formatTimestamp`
+**Web & Images**: `webFetch`, `webSearch`, `downloadImage`, `loadImage`
 
 ### Build with 🛠️
 Compilation guide [here](deps/README.md)
