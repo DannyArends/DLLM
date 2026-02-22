@@ -6,7 +6,8 @@
 import includes;
 
 import std.format : format;
-import std.stdio : writefln;
+import std.stdio : writefln, write, stdout, readln;
+import std.string : strip;
 
 import console : setupConsole;
 import context : processTokens;
@@ -15,68 +16,88 @@ import sampler : createSampler;
 import tools : toolsToJSON;
 import vocab : ChatTemplate;
 
-import agent : agent, agentStep;
+import agent : agent, agentStep, compressHistory;
 import files : readFile;
-
-const(char)* LLM_SUMMARY_MODEL = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
-const(char)* LLM_AGENT_MODEL   = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
-const(char)* LLM_MTMD_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
+import rag : RAG;
+import utils : checkNotNull;
 
 int main(string[] args) {
   // Initialize backend and setup console for UTF output
   llama_backend_init();
+  scope(exit) llama_backend_free();
   setupConsole();
 
+  agent.rag = RAG(agent.LLM_EMBED_MODEL);
+
   // Setup Llama and Load model
-  llama_model* model = loadLlamaModel(LLM_AGENT_MODEL);
+  llama_model* model = loadLlamaModel(agent.LLM_AGENT_MODEL).checkNotNull("Failed to load agent model");
+  scope(exit) llama_model_free(model);
 
   // Get vocab from model
   llama_vocab* vocab = llama_model_get_vocab(model);
 
   // Create context
   llama_context_params ctx_params = model.createContextParams();
-  llama_context* ctx = llama_init_from_model(model, ctx_params);
+  llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create context");
+  scope(exit) llama_free(ctx);
 
    // Create sampler
   llama_sampler* sampler = createSampler();
+  scope(exit) llama_sampler_free(sampler);
 
   // Load MTMD model
   mtmd_context_params mparams = mtmd_context_params_default();
   mparams.use_gpu = true;
   mparams.n_threads = 4;
-  agent.vision = mtmd_init_from_file(LLM_MTMD_MODEL, model, mparams);
+  agent.vision = mtmd_init_from_file(agent.LLM_MTMD_MODEL, model, mparams).checkNotNull("Failed to load vision model");;
+  scope(exit) mtmd_free(agent.vision);
 
   // Construct system, user, and assistant prompts and generate a full prompt
   size_t thinkBudget = 1024;
-  auto system = format(readFile("templates/agent.txt"), toolsToJSON(), thinkBudget);
-  auto user = (args.length > 1)? args[($-1)] : "load the image in data/photo.png";
-
   auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
+  auto system = format(readFile("templates/agent.txt"), toolsToJSON(), thinkBudget);
   tmpl.add("system", system);
-  tmpl.add("user", user);
-  auto prompt = tmpl.render(true) ~ tmpl.thinkBootstrap(thinkBudget); // addAss=true adds assistant prefix
-  if (agent.verbose) writefln("=== Prompt ===\n%s===", prompt);
 
-  // Initial position, process prompt to tokens and set in KV cache (add_special = true for BOS)
-  llama_pos cPos;
-  if (!ctx.processTokens(agent.vision, prompt, [], cPos, ctx_params.n_batch, true)) { 
-    writefln("Failed to eval prompt"); return 1;
-  }
+  bool oneShot = args.length > 1;
+  string user = oneShot ? args[($-1)] : "";
 
   // Create a batch and process prompt
-  llama_batch batch = llama_batch_init(ctx_params.n_batch, 0, 1);
+  llama_pos cPos;
+  llama_batch batch = llama_batch_init(ctx.llama_n_batch(), 0, 1);
+  scope(exit) llama_batch_free(batch);
 
-  // Agent loop
-  int maxIterations = 10;
-  for (int i = 0; i < maxIterations; i++) {
-    if (!ctx.agentStep(tmpl, sampler, batch, i, cPos, ctx_params, thinkBudget)) break;
+  // Process system prompt into KV cache once
+  writefln("Context size: %d, processing system prompt.", ctx.llama_n_ctx());
+  if (!ctx.processTokens(agent.vision, tmpl.render(false), [], cPos, true)) { 
+    writefln("Failed to eval system prompt"); return 1;
   }
-  // Cleanup
-  llama_batch_free(batch);
-  llama_sampler_free(sampler);
-  llama_free(ctx);
-  llama_model_free(model);
-  llama_backend_free();
+
+  do {
+    if (!oneShot) {
+      write("\nYou: "); stdout.flush(); user = readln().strip();
+      if (user == "" || user == "exit" || user == "quit") break;
+    }
+
+    // Compute previous length, add user prompt
+    size_t prevLen = tmpl.render(false).length;
+    tmpl.add("user", user);
+    auto turn = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
+    if (!ctx.processTokens(agent.vision, turn, agent.pendingBitmaps, cPos)) {
+      writefln("[WARN] User turn overflow — compressing history and retrying...");
+      if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) { writefln("[ERROR] Failed to compress history"); break; }
+      size_t retryPrevLen = tmpl.render(false).length;
+      tmpl.add("user", user);
+      auto retryTurn = tmpl.delta(retryPrevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
+      if (!ctx.processTokens(agent.vision, retryTurn, agent.pendingBitmaps, cPos)) { writefln("[ERROR] Failed even after compression"); break; }
+    }
+    agent.pendingBitmaps = [];
+
+    // Agent loop
+    int maxIterations = 10;
+    for (int i = 0; i < maxIterations; i++) {
+      if (!ctx.agentStep(tmpl, sampler, batch, i, cPos, thinkBudget)) break;
+    }
+  } while (!oneShot);
+
   return(0);
 }
-

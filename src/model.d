@@ -6,11 +6,11 @@
 import includes;
 
 // Create context
-llama_context_params createContextParams(llama_model* model, uint n_ctx = 16384, uint n_batch = 2048, uint n_threads = 8) {
+llama_context_params createContextParams(llama_model* model, size_t n_ctx = 8192, size_t n_batch = 2048, size_t n_threads = 8) {
   llama_context_params ctx_params = llama_context_default_params();
-  ctx_params.n_ctx = n_ctx;
-  ctx_params.n_batch = n_batch;
-  ctx_params.n_threads = n_threads;
+  ctx_params.n_ctx = cast(uint)n_ctx;
+  ctx_params.n_batch = cast(uint)n_batch;
+  ctx_params.n_threads = cast(uint)n_threads;
   ctx_params.type_k = GGML_TYPE_Q8_0;
   ctx_params.type_v = GGML_TYPE_Q8_0;
   ctx_params.offload_kqv = true;

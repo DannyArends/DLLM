@@ -5,24 +5,37 @@
 
 import includes;
 
-import std.stdio : writefln, writef, writeln, write;
+import std.array : appender, join;
+import std.stdio : writefln, writeln, write;
+import std.string : fromStringz;
 
 import context : generateTokens, processTokens;
 import tools : ToolCall, toolsToJSON, clean, parseToolCalls, executeToolCalls;
-import vocab : ChatTemplate;
+import vocab : ChatTemplate, tokenize;
+import summary : summarize;
+import rag : RAG;
 
 struct Agent {
+  const(char)* LLM_EMBED_MODEL    = "../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf";
+  const(char)* LLM_AGENT_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
+  const(char)* LLM_MTMD_MODEL     = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
+  const(char)* LLM_SUMMARY_MODEL  = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
+
   bool verbose = false;
   mtmd_context* vision;
+  RAG rag = void;  // init in main with embedding model path
   mtmd_bitmap*[] pendingBitmaps = [];
 }
 
 __gshared Agent agent = Agent();
 
 bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler,
-               ref llama_batch batch, size_t i, ref llama_pos cPos, const llama_context_params ctx_params,
-               size_t thinkBudget) {
-  int nLeft = cast(int)(ctx_params.n_ctx - cPos);
+               ref llama_batch batch, size_t i, ref llama_pos cPos, size_t thinkBudget) {
+  int nLeft = cast(int)(ctx.llama_n_ctx() - cPos);
+  if (nLeft <= 0) {
+    if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) return(false);
+    nLeft = cast(int)(ctx.llama_n_ctx() - cPos);
+  }
   if (agent.verbose) writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
   int nGen;
   auto response = ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
@@ -31,19 +44,72 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
   ToolCall[] toolCalls = response.parseToolCalls();
   if (toolCalls.length == 0) return false;
 
-  llama_memory_seq_rm(llama_get_memory(ctx), 0, cPos - nGen, cPos);
+  llama_memory_seq_rm(ctx.llama_get_memory(), 0, cPos - nGen, cPos);
   cPos -= nGen;
 
   size_t prevLen = tmpl.render(false).length;
-  tmpl.add("assistant", response.clean());
-  foreach(result; toolCalls.executeToolCalls()) { tmpl.add("tool", result); }
+  auto cleaned = response.clean();
+  tmpl.add("assistant", cleaned);
+
+  int remainingCtx;
+  auto vocab = llama_model_get_vocab(llama_get_model(ctx));
+
+  foreach (result; toolCalls.executeToolCalls()) {
+    remainingCtx = cast(int)(ctx.llama_n_ctx() - cPos);
+    llama_token[] resultTokens = tokenize(vocab, result, false);
+    if (cast(int)resultTokens.length > remainingCtx) {
+      agent.rag.ingest(result);
+      auto relevant = agent.rag.query(cleaned).join("\n");  // query with the assistant's last message
+      tmpl.add("tool", "[Relevant excerpt from full tool output]");
+      tmpl.add("tool", relevant);
+    } else {
+      tmpl.add("tool", result);
+    }
+  }
   auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
   if (agent.verbose) writefln("=== Result ===\n%s===", result);
 
-  if (!ctx.processTokens(agent.vision, result, agent.pendingBitmaps, cPos, ctx_params.n_batch)) {
-    writefln("Error: Failed to process continuation tokens");
-    return(false);
+  if (!ctx.processTokens(agent.vision, result, agent.pendingBitmaps, cPos)) {
+   writefln("[WARN] Continuation tokens overflow — compressing and retrying...");
+    if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) return false;
+
+    // Retry with fresh context
+    auto retryResult = tmpl.delta(tmpl.render(false).length, true) ~ tmpl.thinkBootstrap(thinkBudget);
+    if (!ctx.processTokens(agent.vision, retryResult, agent.pendingBitmaps, cPos)) {
+      writefln("[ERROR] Failed even after compression");
+      return(false);
+    }
   }
   agent.pendingBitmaps = [];
+  return(true);
+}
+
+// Summarize conversation history down to system + summary, rebuild KV cache
+bool compressHistory(llama_context* ctx, ref ChatTemplate tmpl, ref llama_pos cPos, size_t thinkBudget) {
+  writefln("[WARN] Context overflow — compressing conversation history...");
+
+  // Collect all non-system messages into one text blob
+  auto blob = appender!string;
+  foreach (msg; tmpl.messages[1..$]) {  // skip system
+    blob ~= fromStringz(msg.role) ~ ": " ~ fromStringz(msg.content) ~ "\n";
+  }
+
+  string summary = summarize(blob.data); // Summarize the blob
+  if (summary.length == 0) { writefln("[ERROR] compressHistory: summarize returned empty"); return false; }
+
+  // Rebuild tmpl: keep system, replace rest with summary
+  tmpl.messages = tmpl.messages[0..1];
+  tmpl.add("user", "[Previous conversation has been summarized]");
+  tmpl.add("assistant", summary);
+
+  // Rebuild KV cache from scratch
+  llama_memory_clear(llama_get_memory(ctx), true);
+  cPos = 0;
+  auto prompt = tmpl.render(true) ~ tmpl.thinkBootstrap(thinkBudget);
+  if (!ctx.processTokens(agent.vision, prompt, [], cPos, true)) {
+    writefln("[ERROR] Failed to process compressed history");
+    return(false);
+  }
+  writefln("[INFO] History compressed, cPos now %d", cPos);
   return(true);
 }
