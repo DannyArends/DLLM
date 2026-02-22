@@ -16,6 +16,7 @@ import std.uri : encodeComponent;
 
 import agent : agent;
 import files : getTempPath;
+import rag : ingest;
 import tools : Tool, RegisterTools;
 import vocab : tokenize;
 

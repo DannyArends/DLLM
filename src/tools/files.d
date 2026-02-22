@@ -17,6 +17,7 @@ import std.string : replace, strip, toStringz;
 import std.random : uniform;
 
 import agent : agent;
+import rag : query, ingest;
 import tools : Tool, RegisterTools;
 import vocab : tokenize;
 

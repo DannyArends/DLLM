@@ -15,7 +15,7 @@ import console : setupConsole;
 import context : processTokens;
 import files : readFile;
 import model : createContextParams, loadLlamaModel;
-import rag : RAG;
+import rag : RAG, loadRAG, cleanup;
 import sampler : createSampler;
 import tools : toolsToJSON;
 import utils : checkNotNull;
@@ -27,8 +27,8 @@ int main(string[] args) {
   setupConsole();
 
   // Setup RAG
-  agent.rag = RAG(agent.LLM_EMBED_MODEL);
-
+  agent.rag = loadRAG(agent.LLM_EMBED_MODEL);
+  scope(exit) agent.rag.cleanup();
   // Setup Llama and Load model
   llama_model* model = loadLlamaModel(agent.LLM_AGENT_MODEL).checkNotNull("Failed to load agent model");
   scope(exit) llama_model_free(model);

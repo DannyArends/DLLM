@@ -27,45 +27,47 @@ struct RAG {
   llama_vocab* vocab;
   Chunk[] index;
   size_t batchSize = 512;
-
-  this(const(char)* modelPath) {
-    model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
-    llama_context_params params = model.createContextParams(batchSize);
-    params.embeddings = true;
-    ctx = llama_init_from_model(model, params).checkNotNull("Failed to create embedding context");
-    vocab = llama_model_get_vocab(model);
-  }
-
-  // Ingest a document into the RAG
-  void ingest(string text) {
-    llama_token[] all = tokenize(vocab, text, false);
-    for (size_t i = 0; i < all.length; i += batchSize) {
-      auto tokens = all[i..min(i + batchSize, all.length)];
-      string chunk = detokenize(vocab, tokens);
-      auto emb = embed(ctx, vocab, tokens);
-      if (emb.length > 0) index ~= Chunk(chunk, emb);
-    }
-  }
-
-  // Query the RAG
-  string[] query(string q, int topK = 3) {
-    llama_token[] qTokens = tokenize(vocab, q, true);
-    if (qTokens.length > ctx.llama_n_ubatch())
-      qTokens = qTokens[0..ctx.llama_n_ubatch()];
-    float[] qEmbed = ctx.embed(vocab, qTokens);
-    if (qEmbed.length == 0) return [];
-    auto scored = new float[index.length];
-    foreach (i, ref c; index) scored[i] = cosineSimilarity(qEmbed, c.embedding);
-    auto indices = new size_t[index.length];
-    foreach (i; 0..indices.length) indices[i] = i;
-    indices.sort!((a, b) => scored[a] > scored[b]);
-    string[] results;
-    foreach (i; 0..min(topK, indices.length)) results ~= index[indices[i]].text;
-    return results;
-  }
-
-  ~this() { llama_free(ctx); llama_model_free(model); }
 }
+
+RAG loadRAG(const(char)* modelPath) {
+  RAG rag;
+  rag.model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
+  llama_context_params params = rag.model.createContextParams(rag.batchSize);
+  params.embeddings = true;
+  rag.ctx = llama_init_from_model(rag.model, params).checkNotNull("Failed to create embedding context");
+  rag.vocab = llama_model_get_vocab(rag.model);
+  return(rag);
+}
+
+// Ingest a document into the RAG
+void ingest(RAG rag, string text) {
+  llama_token[] all = tokenize(rag.vocab, text, false);
+  for (size_t i = 0; i < all.length; i += rag.batchSize) {
+    auto tokens = all[i..min(i + rag.batchSize, all.length)];
+    string chunk = detokenize(rag.vocab, tokens);
+    auto emb = embed(rag.ctx, rag.vocab, tokens);
+    if (emb.length > 0) rag.index ~= Chunk(chunk, emb);
+  }
+}
+
+// Query the RAG
+string[] query(RAG rag, string q, int topK = 3) {
+  llama_token[] qTokens = tokenize(rag.vocab, q, true);
+  if (qTokens.length > rag.ctx.llama_n_ubatch())
+    qTokens = qTokens[0..rag.ctx.llama_n_ubatch()];
+  float[] qEmbed = rag.ctx.embed(rag.vocab, qTokens);
+  if (qEmbed.length == 0) return [];
+  auto scored = new float[rag.index.length];
+  foreach (i, ref c; rag.index) scored[i] = cosineSimilarity(qEmbed, c.embedding);
+  auto indices = new size_t[rag.index.length];
+  foreach (i; 0..indices.length) indices[i] = i;
+  indices.sort!((a, b) => scored[a] > scored[b]);
+  string[] results;
+  foreach (i; 0..min(topK, indices.length)) results ~= rag.index[indices[i]].text;
+  return results;
+}
+
+void cleanup(RAG rag) { llama_free(rag.ctx); llama_model_free(rag.model); }
 
 // Cosine similarity between vectors a and b
 float cosineSimilarity(float[] a, float[] b) {
