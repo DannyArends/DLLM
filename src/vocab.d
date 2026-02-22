@@ -38,7 +38,7 @@ struct ChatTemplate {
   string delta(size_t prevLen, bool addAss = false) { return render(addAss)[prevLen..$]; }
 
   // Returns the bootstrap line for the models thinking budget
-  string thinkBootstrap(size_t thinkBudget = 512) {
+  string thinkBootstrap(size_t thinkBudget = 256) {
     if(!canThink) return("");
     return(format("<think>\nBudget: %d tokens. Be concise.\n", thinkBudget)); 
   }

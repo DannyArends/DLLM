@@ -26,7 +26,7 @@ struct RAG {
   llama_context* ctx;
   llama_vocab* vocab;
   Chunk[] index;
-  size_t batchSize = 4096;
+  size_t batchSize = 512;
 
   this(const(char)* modelPath) {
     model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
@@ -40,15 +40,19 @@ struct RAG {
   void ingest(string text) {
     llama_token[] all = tokenize(vocab, text, false);
     for (size_t i = 0; i < all.length; i += batchSize) {
-      string chunk = detokenize(vocab, all[i..min(i + batchSize, all.length)]);
-      auto emb = embed(ctx, vocab, chunk);
+      auto tokens = all[i..min(i + batchSize, all.length)];
+      string chunk = detokenize(vocab, tokens);
+      auto emb = embed(ctx, vocab, tokens);
       if (emb.length > 0) index ~= Chunk(chunk, emb);
     }
   }
 
   // Query the RAG
   string[] query(string q, int topK = 3) {
-    float[] qEmbed = embed(ctx, vocab, q);
+    llama_token[] qTokens = tokenize(vocab, q, true);
+    if (qTokens.length > ctx.llama_n_ubatch())
+      qTokens = qTokens[0..ctx.llama_n_ubatch()];
+    float[] qEmbed = ctx.embed(vocab, qTokens);
     if (qEmbed.length == 0) return [];
     auto scored = new float[index.length];
     foreach (i, ref c; index) scored[i] = cosineSimilarity(qEmbed, c.embedding);
@@ -74,7 +78,11 @@ float cosineSimilarity(float[] a, float[] b) {
 
 // Tokenize the text and get embeddings
 float[] embed(llama_context* ctx, llama_vocab* vocab, string text) {
-  llama_token[] tokens = tokenize(vocab, text, true);
+  return(ctx.embed(vocab, tokenize(vocab, text, true)));
+}
+
+// Tokenize the text and get embeddings
+float[] embed(llama_context* ctx, llama_vocab* vocab, llama_token[] tokens) {
   if (tokens.length > ctx.llama_n_ubatch()) {
     writefln("[ERROR] embed: text too large for batch (%d > %d)", tokens.length, ctx.llama_n_ubatch());
     return [];

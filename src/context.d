@@ -53,7 +53,7 @@ bool processTokens(llama_context* ctx, string text, ref llama_pos cPos, bool add
 
 // Generate a reponse
 string generateTokens(llama_context* ctx, ChatTemplate tmpl, llama_sampler* sampler,
-                      ref llama_batch batch, ref llama_pos cPos, ref int nGen, int ctxLeft, size_t thinkBudget = 512, bool verbose = true) {
+                      ref llama_batch batch, ref llama_pos cPos, ref int nGen, int ctxLeft, size_t thinkBudget = 256, bool verbose = true) {
   if (ctxLeft <= 0) { writeln("[ERROR] No context left for generation"); return ""; }
   auto response = appender!string;
   char[256] buf = 0;

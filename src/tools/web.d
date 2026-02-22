@@ -11,7 +11,7 @@ import std.path : extension;
 import std.net.curl : download, get, HTTP;
 import std.regex : regex, replaceAll;
 import std.stdio : writefln;
-import std.string : strip;
+import std.string : strip, fromStringz;
 import std.uri : encodeComponent;
 
 import agent : agent;
@@ -56,7 +56,7 @@ string webFetch(string url) {
       return(ingest);
     }
     return(content);
-  } catch (Exception e) { return "Error: " ~ e.msg; }
+  } catch (Exception e) { return "Error: " ~ fromStringz(e.msg); }
 }
 
 @Tool("Search the web using a query")
@@ -76,9 +76,9 @@ string webSearch(string query, string max_results) {
         JSONValue result = JSONValue.emptyObject;
         result["title"] = "title" in item ? item["title"] : JSONValue("No title");
         result["url"] = "url" in item ? item["url"] : JSONValue("");
-        result["content"] = "content" in item ? item["content"] : JSONValue("");
-        result["category"] = "category" in item ? item["category"] : JSONValue("");
-        result["score"] = "score" in item ? item["score"] : JSONValue(0);
+        //result["content"] = "content" in item ? item["content"] : JSONValue("");
+        //result["category"] = "category" in item ? item["category"] : JSONValue("");
+        //result["score"] = "score" in item ? item["score"] : JSONValue(0);
         results ~= result;
       }
     }

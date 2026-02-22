@@ -41,7 +41,7 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
   if (agent.verbose) writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
   int nGen;
   auto response = ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
-  writeln();
+  writeln(); // Should we a memory compacting trigger here ?
 
   ToolCall[] toolCalls = response.parseToolCalls();
   if (toolCalls.length == 0) return false;

@@ -7,7 +7,7 @@ import includes;
 
 import std.algorithm : min;
 import std.array : appender, join;
-import std.stdio : writefln;
+import std.stdio : writefln, writeln;
 
 import agent : agent;
 import context : generateTokens, processTokens;
@@ -19,6 +19,7 @@ import vocab : ChatTemplate, tokenize, detokenize;
 
 // Main summary function, loads model, creates context and call the recursive summarize function
 string summarize(string text, size_t n_ctx = 2048) {
+  writeln("[Summarizing]");
   llama_model* model = loadLlamaModel(agent.LLM_SUMMARY_MODEL).checkNotNull("Failed to load summary model");
   scope(exit){ llama_model_free(model); }
 

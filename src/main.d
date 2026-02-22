@@ -37,7 +37,7 @@ int main(string[] args) {
   llama_vocab* vocab = llama_model_get_vocab(model);
 
   // Create context
-  llama_context_params ctx_params = model.createContextParams();
+  llama_context_params ctx_params = model.createContextParams(12_288);
   llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create context");
   scope(exit) llama_free(ctx);
 
@@ -53,7 +53,7 @@ int main(string[] args) {
   scope(exit) mtmd_free(agent.vision);
 
   // Construct system, user, and assistant prompts and generate a full prompt
-  size_t thinkBudget = 1024;
+  size_t thinkBudget = 256;
   auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
   
   string systemFmt = readText("templates/agent.txt");

@@ -6,7 +6,7 @@
 import includes;
 
 // Create context
-llama_context_params createContextParams(llama_model* model, size_t n_ctx = 8192, size_t n_batch = 2048, size_t n_threads = 8) {
+llama_context_params createContextParams(llama_model* model, size_t n_ctx = 4096, size_t n_batch = 1024, size_t n_threads = 8) {
   llama_context_params ctx_params = llama_context_default_params();
   ctx_params.n_ctx = cast(uint)n_ctx;
   ctx_params.n_batch = cast(uint)n_batch;
