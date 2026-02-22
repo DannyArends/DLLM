@@ -10,6 +10,7 @@ llama_context_params createContextParams(llama_model* model, size_t n_ctx = 8192
   llama_context_params ctx_params = llama_context_default_params();
   ctx_params.n_ctx = cast(uint)n_ctx;
   ctx_params.n_batch = cast(uint)n_batch;
+  ctx_params.n_ubatch = cast(uint)n_batch;
   ctx_params.n_threads = cast(uint)n_threads;
   ctx_params.type_k = GGML_TYPE_Q8_0;
   ctx_params.type_v = GGML_TYPE_Q8_0;

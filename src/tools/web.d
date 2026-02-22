@@ -14,12 +14,16 @@ import std.stdio : writefln;
 import std.string : strip;
 import std.uri : encodeComponent;
 
-import files : writeFile, getTempPath;
+import agent : agent;
+import files : getTempPath;
 import tools : Tool, RegisterTools;
+import vocab : tokenize;
 
 mixin RegisterTools;
 
-@Tool("Fetch URL content and save the content to temporary file. Returns a json with the path to the content and its length.")
+string ingestWWWFmt = "Web '%s' (%d tokens), ingested into RAG.";
+
+@Tool("Fetch the contents of an URL.")
 string webFetch(string url) {
   try {
     //writefln("=== Fetching: %s", url);
@@ -45,11 +49,13 @@ string webFetch(string url) {
     // Collapse whitespace
     content = replaceAll(content, regex(r"\s+"), " ");
     content = content.strip();
-
-    const int MAX_SIZE = 50_000;    // Limit size
-    if (content.length > MAX_SIZE) { content = content[0..MAX_SIZE]; }
-
-    return(writeFile(content));
+    auto tokens = tokenize(agent.rag.vocab, content, false);
+    string ingest = ingestWWWFmt.format(url, tokens.length);
+    if (tokens.length > tokenize(agent.rag.vocab, ingest, false).length) {
+      agent.rag.ingest(content);
+      return(ingest);
+    }
+    return(content);
   } catch (Exception e) { return "Error: " ~ e.msg; }
 }
 

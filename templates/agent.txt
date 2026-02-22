@@ -20,3 +20,4 @@ Important:
 - Use as many tool-calls as you want
 - Prefer to call multiple tools in a single response when independant.
 - Always surround tool calls with the <tool_call> and </tool_call> tags.
+- You have a RAG, use queryRAG() to retrieve relevant parts.

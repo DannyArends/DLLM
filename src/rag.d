@@ -26,20 +26,21 @@ struct RAG {
   llama_context* ctx;
   llama_vocab* vocab;
   Chunk[] index;
+  size_t batchSize = 4096;
 
   this(const(char)* modelPath) {
     model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
-    llama_context_params params = model.createContextParams(4096);
+    llama_context_params params = model.createContextParams(batchSize);
     params.embeddings = true;
     ctx = llama_init_from_model(model, params).checkNotNull("Failed to create embedding context");
     vocab = llama_model_get_vocab(model);
   }
 
   // Ingest a document into the RAG
-  void ingest(string text, size_t chunkTokens = 256) {
+  void ingest(string text) {
     llama_token[] all = tokenize(vocab, text, false);
-    for (size_t i = 0; i < all.length; i += chunkTokens) {
-      string chunk = detokenize(vocab, all[i..min(i + chunkTokens, all.length)]);
+    for (size_t i = 0; i < all.length; i += batchSize) {
+      string chunk = detokenize(vocab, all[i..min(i + batchSize, all.length)]);
       auto emb = embed(ctx, vocab, chunk);
       if (emb.length > 0) index ~= Chunk(chunk, emb);
     }
@@ -74,8 +75,8 @@ float cosineSimilarity(float[] a, float[] b) {
 // Tokenize the text and get embeddings
 float[] embed(llama_context* ctx, llama_vocab* vocab, string text) {
   llama_token[] tokens = tokenize(vocab, text, true);
-  if (tokens.length > ctx.llama_n_batch()) {
-    writefln("[ERROR] embed: text too large for batch (%d > %d)", tokens.length, ctx.llama_n_batch());
+  if (tokens.length > ctx.llama_n_ubatch()) {
+    writefln("[ERROR] embed: text too large for batch (%d > %d)", tokens.length, ctx.llama_n_ubatch());
     return [];
   }
   llama_batch batch = llama_batch_get_one(tokens.ptr, cast(int)tokens.length);

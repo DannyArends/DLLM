@@ -6,7 +6,8 @@
 import includes;
 
 import std.format : format;
-import std.stdio : writefln, write, stdout, readln;
+import std.file : readText;
+import std.stdio : writefln, writeln, write, writef, stdout, readln;
 import std.string : strip;
 
 import agent : agent, agentStep, compressHistory;
@@ -54,7 +55,10 @@ int main(string[] args) {
   // Construct system, user, and assistant prompts and generate a full prompt
   size_t thinkBudget = 1024;
   auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
-  auto system = format(readFile("templates/agent.txt"), toolsToJSON(), thinkBudget);
+  
+  string systemFmt = readText("templates/agent.txt");
+  string tools = toolsToJSON();
+  auto system = systemFmt.format(tools, thinkBudget);
   tmpl.add("system", system);
 
   bool oneShot = args.length > 1;
@@ -73,7 +77,7 @@ int main(string[] args) {
 
   do { // Main user REPL loop
     if (!oneShot) {
-      write("\nYou: "); stdout.flush(); user = readln().strip();
+      writef("\nYou [%d/%dkb]: ", cPos / 1024, ctx.llama_n_ctx() / 1024); stdout.flush(); user = readln().strip();
       if (user == "" || user == "exit" || user == "quit") break;
     }
 

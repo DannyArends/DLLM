@@ -5,6 +5,7 @@
 
 import includes;
 
+import std.array : join;
 import std.conv : to;
 import std.path : baseName, buildNormalizedPath;
 import std.process : executeShell;
@@ -15,10 +16,19 @@ import std.stdio : writefln;
 import std.string : replace, strip, toStringz;
 import std.random : uniform;
 
-import tools : Tool, RegisterTools;
 import agent : agent;
+import tools : Tool, RegisterTools;
+import vocab : tokenize;
 
 mixin RegisterTools;
+
+string ingestFmt = "File '%s' (%d tokens), ingested into RAG.";
+
+@Tool("Query the RAG index with a question. Returns the most relevant excerpts.")
+string queryRAG(string question) {
+  auto results = agent.rag.query(question);
+  return results.length > 0 ? results.join("\n---\n") : "No relevant results found.";
+}
 
 @Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
 string loadImage(string path) {
@@ -31,21 +41,33 @@ string loadImage(string path) {
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 
-@Tool("Extract text content from a PDF file at the given path.")
+@Tool("Read / Load into RAG text content from a PDF document at the given path.")
 string readPDF(string path) {
   try {
     auto result = executeShell(format("pdftotext '%s' -", path));
     if (result.status != 0) return format("Error: pdftotext failed for '%s'", path);
     auto text = result.output.strip();
     if (text.length == 0) return "Warning: no text extracted, PDF may be scanned/image-based";
+    auto tokens = tokenize(agent.rag.vocab, text, false);
+    string ingest = ingestFmt.format(path, tokens.length);
+    if (tokens.length > tokenize(agent.rag.vocab, ingest, false).length) {
+      agent.rag.ingest(text);
+      return(ingest);
+    }
     return text;
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 
-@Tool("Read the contents of a file located at path.")
+@Tool("Read / Load into RAG the contents of a file located at path.")
 string readFile(string path) {
-  try { return readText(path);
-  } catch (Exception e) { return(format("Error: %s", e.msg)); }
+  auto text = readText(path);
+  auto tokens = tokenize(agent.rag.vocab, text, false);
+  string ingest = ingestFmt.format(path, tokens.length);
+  if (tokens.length >  tokenize(agent.rag.vocab, ingest, false).length) {
+    agent.rag.ingest(text);
+    return(ingest);
+  }
+  return text;
 }
 
 @Tool("Check if a file or directory exists. Returns 'true' or 'false'.")

@@ -60,12 +60,10 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
     remainingCtx = cast(int)(ctx.llama_n_ctx() - cPos);
     llama_token[] resultTokens = tokenize(vocab, result, false);
     if (cast(int)resultTokens.length > remainingCtx) {
-      agent.rag.ingest(result);
-      auto relevant = agent.rag.query(cleaned).join("\n");  // query with the assistant's last message
-      tmpl.add("tool", "[Relevant excerpt from full tool output]");
-      tmpl.add("tool", relevant);
+        string shortened = summarize(result);
+        tmpl.add("tool", shortened.length > 0 ? shortened : "[Tool output too large, summarization failed]");
     } else {
-      tmpl.add("tool", result);
+        tmpl.add("tool", result);
     }
   }
   auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
