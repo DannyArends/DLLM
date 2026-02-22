@@ -17,19 +17,24 @@ import tools : clean;
 import utils : checkNotNull;
 import vocab : ChatTemplate, tokenize, detokenize;
 
+// Main summary function, loads model, creates context and call the recursive summarize function
 string summarize(string text, size_t n_ctx = 2048) {
   llama_model* model = loadLlamaModel(agent.LLM_SUMMARY_MODEL).checkNotNull("Failed to load summary model");
   scope(exit){ llama_model_free(model); }
+
   llama_context_params ctx_params = model.createContextParams(n_ctx);
   llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create summary context");
   scope(exit){ llama_free(ctx); }
-  llama_sampler* sampler = createSampler();
+
+  llama_sampler* sampler = createSampler(0.3f);   // Lower temperature for more factual summaries
   scope(exit) llama_sampler_free(sampler);
+
   auto vocab = llama_model_get_vocab(model);
   auto tmplStr = llama_model_chat_template(model, null);
   return(summarize(ctx, sampler, vocab, tmplStr, text, n_ctx));
 }
 
+// Summarize a sliding window 'chunk'
 string summarizeChunk(llama_context* ctx, llama_sampler* sampler, llama_vocab* vocab, const(char)* tmplStr, string chunk, int responseBudget) {
   auto tmpl = ChatTemplate(vocab, tmplStr);
   tmpl.add("system", "You are a precise information extractor. Extract and preserve all facts, entities, names, numbers, relationships, and key details. Do not omit specifics.");
@@ -43,6 +48,7 @@ string summarizeChunk(llama_context* ctx, llama_sampler* sampler, llama_vocab* v
   return(clean(ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, responseBudget, 0, false)));
 }
 
+// Recursive summarize function
 string summarize(llama_context* ctx, llama_sampler* sampler, llama_vocab* vocab, const(char)* tmplStr, string text, size_t n_ctx) {
   llama_token[] allTokens = tokenize(vocab, text, false);
   size_t PROMPT_OVERHEAD = 256;

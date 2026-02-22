@@ -9,16 +9,8 @@ import std.array : appender;
 import std.stdio : write, writeln, writefln, stdout;
 import std.string : toStringz;
 
-import utils : fitsInContext;
+import utils : fitsInContext, nTokens;
 import vocab : ChatTemplate, tokenize;
-
-int nTokens(mtmd_input_chunks* chunks) {
-  int total = 0;
-  for (size_t i = 0; i < mtmd_input_chunks_size(chunks); i++) {
-    total += mtmd_input_chunk_get_n_pos(mtmd_input_chunks_get(chunks, i));
-  }
-  return total;
-}
 
 // Tokenize chunks and obtain the token size
 int tokenizeChunks(mtmd_context* vision, ref mtmd_input_chunks* chunks, string text, mtmd_bitmap*[] bitmaps, bool add_special) {
@@ -39,7 +31,7 @@ bool processTokens(llama_context* ctx, mtmd_context* vision,
   scope(exit) mtmd_input_chunks_free(chunks);
 
   int nTokens = vision.tokenizeChunks(chunks, text, bitmaps, add_special); // or equivalent token count API
-  if (!ctx.fitsInContext(cPos, nTokens, "processTokens")) return false;
+  if (!ctx.fitsInContext(cPos, nTokens)) return false;
   return(mtmd_helper_eval_chunks(vision, ctx, chunks, cPos, 0, ctx.llama_n_batch(), true, &cPos) == 0);
 }
 
@@ -47,7 +39,7 @@ bool processTokens(llama_context* ctx, mtmd_context* vision,
 bool processTokens(llama_context* ctx, string text, ref llama_pos cPos, bool add_special = false) {
   llama_token[] tokens = tokenize(llama_model_get_vocab(llama_get_model(ctx)), text, add_special);
   int n = cast(int)tokens.length;
-  if (!ctx.fitsInContext(cPos, n, "processTokens")) return false;
+  if (!ctx.fitsInContext(cPos, n)) return false;
 
   int n_batch = ctx.llama_n_batch();
   for (int i = 0; i < n; i += n_batch) {

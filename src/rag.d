@@ -35,6 +35,7 @@ struct RAG {
     vocab = llama_model_get_vocab(model);
   }
 
+  // Ingest a document into the RAG
   void ingest(string text, size_t chunkTokens = 256) {
     llama_token[] all = tokenize(vocab, text, false);
     for (size_t i = 0; i < all.length; i += chunkTokens) {
@@ -44,6 +45,7 @@ struct RAG {
     }
   }
 
+  // Query the RAG
   string[] query(string q, int topK = 3) {
     float[] qEmbed = embed(ctx, vocab, q);
     if (qEmbed.length == 0) return [];
@@ -69,6 +71,7 @@ float cosineSimilarity(float[] a, float[] b) {
   return dot / denom;
 }
 
+// Tokenize the text and get embeddings
 float[] embed(llama_context* ctx, llama_vocab* vocab, string text) {
   llama_token[] tokens = tokenize(vocab, text, true);
   if (tokens.length > ctx.llama_n_batch()) {

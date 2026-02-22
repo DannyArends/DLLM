@@ -16,19 +16,21 @@ import summary : summarize;
 import rag : RAG;
 
 struct Agent {
+  /// Several model paths that are used by the Agent (Embeddings, Agent, MTMD, and Summary)
   const(char)* LLM_EMBED_MODEL    = "../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf";
   const(char)* LLM_AGENT_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
   const(char)* LLM_MTMD_MODEL     = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
   const(char)* LLM_SUMMARY_MODEL  = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
 
-  bool verbose = false;
-  mtmd_context* vision;
-  RAG rag = void;  // init in main with embedding model path
-  mtmd_bitmap*[] pendingBitmaps = [];
+  bool verbose = false;                   /// Verbosity
+  mtmd_context* vision;                   /// Vision context
+  RAG rag = void;                         /// RAG
+  mtmd_bitmap*[] pendingBitmaps = [];     /// Images to upload in KV
 }
 
-__gshared Agent agent = Agent();
+__gshared Agent agent = Agent();          /// Global agent
 
+// A single step in the agent: token generation for thinking and response
 bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler,
                ref llama_batch batch, size_t i, ref llama_pos cPos, size_t thinkBudget) {
   int nLeft = cast(int)(ctx.llama_n_ctx() - cPos);
@@ -95,7 +97,7 @@ bool compressHistory(llama_context* ctx, ref ChatTemplate tmpl, ref llama_pos cP
   }
 
   string summary = summarize(blob.data); // Summarize the blob
-  if (summary.length == 0) { writefln("[ERROR] compressHistory: summarize returned empty"); return false; }
+  if (summary.length == 0) { writefln("[ERROR] compressHistory: summarize() returned empty"); return false; }
 
   // Rebuild tmpl: keep system, replace rest with summary
   tmpl.messages = tmpl.messages[0..1];

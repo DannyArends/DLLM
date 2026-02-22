@@ -12,10 +12,10 @@ import std.format : format;
 import tools : clean;
 
 struct ChatTemplate {
-  llama_vocab* vocab;
-  const(char)* tmplStr;           // from llama_model_chat_template(model, null)
-  llama_chat_message[] messages;  // persistent history (keep strings alive!)
-  bool canThink = false;  // set once in constructor
+  llama_vocab* vocab;                 /// Model vocabulary pointer
+  const(char)* tmplStr;               /// Chat template from llama_model_chat_template(model, null)
+  llama_chat_message[] messages;      /// Persistent history
+  bool canThink = false;              /// Is the model able to think ?
 
   this(llama_vocab* vocab, const(char)* tmplStr) {
     this.vocab = vocab;
@@ -23,8 +23,10 @@ struct ChatTemplate {
     if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) canThink = true;
   }
 
+  // Add a message to the history for role
   void add(string role, string content) { messages ~= llama_chat_message(role.toStringz, content.toStringz); }
 
+  // Render the chat template
   string render(bool addAss = false) {
     int n = llama_chat_apply_template(tmplStr, messages.ptr, messages.length, addAss, null, 0);
     char[] buf = new char[n];

@@ -9,24 +9,23 @@ import std.format : format;
 import std.stdio : writefln, write, stdout, readln;
 import std.string : strip;
 
+import agent : agent, agentStep, compressHistory;
 import console : setupConsole;
 import context : processTokens;
+import files : readFile;
 import model : createContextParams, loadLlamaModel;
+import rag : RAG;
 import sampler : createSampler;
 import tools : toolsToJSON;
+import utils : checkNotNull;
 import vocab : ChatTemplate;
 
-import agent : agent, agentStep, compressHistory;
-import files : readFile;
-import rag : RAG;
-import utils : checkNotNull;
-
 int main(string[] args) {
-  // Initialize backend and setup console for UTF output
-  llama_backend_init();
+  llama_backend_init();  // Initialize backend and setup console for UTF output
   scope(exit) llama_backend_free();
   setupConsole();
 
+  // Setup RAG
   agent.rag = RAG(agent.LLM_EMBED_MODEL);
 
   // Setup Llama and Load model
@@ -72,7 +71,7 @@ int main(string[] args) {
     writefln("Failed to eval system prompt"); return 1;
   }
 
-  do {
+  do { // Main user REPL loop
     if (!oneShot) {
       write("\nYou: "); stdout.flush(); user = readln().strip();
       if (user == "" || user == "exit" || user == "quit") break;
@@ -92,7 +91,7 @@ int main(string[] args) {
     }
     agent.pendingBitmaps = [];
 
-    // Agent loop
+    // Agent loop, max 10 iterations
     int maxIterations = 10;
     for (int i = 0; i < maxIterations; i++) {
       if (!ctx.agentStep(tmpl, sampler, batch, i, cPos, thinkBudget)) break;
