@@ -18,7 +18,9 @@ import utils : checkNotNull;
 import vocab : ChatTemplate, tokenize, detokenize;
 
 // Main summary function, loads model, creates context and call the recursive summarize function
-string summarize(string text, size_t n_ctx = 4096, size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 8, bool embeddings = false) {
+string summarize(string text, size_t n_ctx = 4096, 
+                 size_t n_batch = 1024, size_t n_ubatch = 1024, 
+                 size_t n_threads = 8, bool embeddings = false) {
   writeln("[Summarizing]");
   llama_model* model = loadLlamaModel(agent.LLM_SUMMARY_MODEL).checkNotNull("Failed to load summary model");
   scope(exit){ llama_model_free(model); }

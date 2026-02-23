@@ -29,7 +29,9 @@ struct RAG {
   size_t batchSize = 512;
 }
 
-RAG loadRAG(const(char)* modelPath, size_t n_ctx = 4096, size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 4, bool embeddings = true) {
+RAG loadRAG(const(char)* modelPath, size_t n_ctx = 4096, 
+            size_t n_batch = 1024, size_t n_ubatch = 1024, 
+            size_t n_threads = 4, bool embeddings = true) {
   RAG rag;
   rag.model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
   llama_context_params params = rag.model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);

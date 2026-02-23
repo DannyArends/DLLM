@@ -40,7 +40,8 @@ void free(ref LlamaModel m) {
 
 // Create context
 llama_context_params createCtxParams(llama_model* model, size_t n_ctx = 4096, 
-                                     size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 8, bool embeddings = false) {
+                                     size_t n_batch = 1024, size_t n_ubatch = 1024, 
+                                     size_t n_threads = 8, bool embeddings = false) {
   llama_context_params ctx_params = llama_context_default_params();
   ctx_params.n_ctx = cast(uint)n_ctx;
   ctx_params.n_batch = cast(uint)n_batch;
@@ -55,6 +56,7 @@ llama_context_params createCtxParams(llama_model* model, size_t n_ctx = 4096,
   return(ctx_params);
 }
 
+// Still used now, needs to be removed after we use loadModel
 llama_model* loadLlamaModel(const(char)* path) {
   // Load model
   llama_model_params model_params = llama_model_default_params();
@@ -62,8 +64,10 @@ llama_model* loadLlamaModel(const(char)* path) {
   return(llama_model_load_from_file(path, model_params));
 }
 
+// Load a LMM
 LlamaModel loadModel(const(char)*[] paths, size_t n_ctx = 4096, 
-                     size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 8, bool embeddings = false) {
+                     size_t n_batch = 1024, size_t n_ubatch = 1024, 
+                     size_t n_threads = 8, bool embeddings = false) {
   LlamaModel m;
   m.model = loadLlamaModel(paths[0]).checkNotNull("Failed to load model");
   m.vocab = llama_model_get_vocab(m.model);
