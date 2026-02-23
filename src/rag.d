@@ -11,7 +11,7 @@ import std.math : sqrt;
 import std.stdio : writefln;
 
 import vocab : tokenize, detokenize;
-import model : createContextParams, loadLlamaModel;
+import model : createCtxParams, loadLlamaModel;
 import utils : checkNotNull;
 
 // RAG Chunk
@@ -29,11 +29,10 @@ struct RAG {
   size_t batchSize = 512;
 }
 
-RAG loadRAG(const(char)* modelPath) {
+RAG loadRAG(const(char)* modelPath, size_t n_ctx = 4096, size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 4, bool embeddings = true) {
   RAG rag;
   rag.model = loadLlamaModel(modelPath).checkNotNull("Failed to load embedding model");
-  llama_context_params params = rag.model.createContextParams(rag.batchSize);
-  params.embeddings = true;
+  llama_context_params params = rag.model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);
   rag.ctx = llama_init_from_model(rag.model, params).checkNotNull("Failed to create embedding context");
   rag.vocab = llama_model_get_vocab(rag.model);
   return(rag);

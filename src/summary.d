@@ -11,19 +11,19 @@ import std.stdio : writefln, writeln;
 
 import agent : agent;
 import context : generateTokens, processTokens;
-import model : createContextParams, loadLlamaModel;
+import model : createCtxParams, loadLlamaModel;
 import sampler : createSampler;
 import tools : clean;
 import utils : checkNotNull;
 import vocab : ChatTemplate, tokenize, detokenize;
 
 // Main summary function, loads model, creates context and call the recursive summarize function
-string summarize(string text, size_t n_ctx = 2048) {
+string summarize(string text, size_t n_ctx = 4096, size_t n_batch = 1024, size_t n_ubatch = 1024, size_t n_threads = 8, bool embeddings = false) {
   writeln("[Summarizing]");
   llama_model* model = loadLlamaModel(agent.LLM_SUMMARY_MODEL).checkNotNull("Failed to load summary model");
   scope(exit){ llama_model_free(model); }
 
-  llama_context_params ctx_params = model.createContextParams(n_ctx);
+  llama_context_params ctx_params = model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);
   llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create summary context");
   scope(exit){ llama_free(ctx); }
 

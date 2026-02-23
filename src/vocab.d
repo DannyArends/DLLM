@@ -11,6 +11,9 @@ import std.format : format;
 
 import tools : clean;
 
+enum llama_token LLAMA_TOKEN_NULL = -1;
+
+
 struct ChatTemplate {
   llama_vocab* vocab;                 /// Model vocabulary pointer
   const(char)* tmplStr;               /// Chat template from llama_model_chat_template(model, null)

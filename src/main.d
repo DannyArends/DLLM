@@ -14,7 +14,7 @@ import agent : agent, agentStep, compressHistory;
 import console : setupConsole;
 import context : processTokens;
 import files : readFile;
-import model : createContextParams, loadLlamaModel;
+import model : createCtxParams, loadLlamaModel;
 import rag : RAG, loadRAG, cleanup;
 import sampler : createSampler;
 import tools : toolsToJSON;
@@ -37,7 +37,7 @@ int main(string[] args) {
   llama_vocab* vocab = llama_model_get_vocab(model);
 
   // Create context
-  llama_context_params ctx_params = model.createContextParams(12_288);
+  llama_context_params ctx_params = model.createCtxParams(12_288);
   llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create context");
   scope(exit) llama_free(ctx);
 
