@@ -16,7 +16,7 @@ import std.stdio : writefln;
 import std.string : replace, strip, toStringz;
 import std.random : uniform;
 
-import agent : agent;
+import agent : agent, agentModel, embedModel;
 import rag : query, ingest;
 import tools : Tool, RegisterTools;
 import vocab : tokenize;
@@ -27,15 +27,15 @@ string ingestFmt = "File '%s' (%d tokens), ingested into RAG.";
 
 @Tool("Query the RAG index with a question. Returns the most relevant excerpts.")
 string queryRAG(string question) {
-  auto results = agent.rag.query(question);
+  auto results = embedModel.query(question);
   return results.length > 0 ? results.join("\n---\n") : "No relevant results found.";
 }
 
 @Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
 string loadImage(string path) {
   try {
-    if (agent.vision is null) return "Error: vision context not initialized";
-      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz());
+    if (agentModel.vision is null) return "Error: vision context not initialized";
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agentModel.vision, path.toStringz());
       if (bmp is null) return format("Error: failed to load image at '%s'", path);
       agent.pendingBitmaps ~= bmp;
       return format("Image loaded from '%s': <__media__>", path);
@@ -49,11 +49,11 @@ string readPDF(string path) {
     if (result.status != 0) return format("Error: pdftotext failed for '%s'", path);
     auto text = result.output.strip();
     if (text.length == 0) return "Warning: no text extracted, PDF may be scanned/image-based";
-    auto tokens = tokenize(agent.rag.vocab, text, false);
-    string ingest = ingestFmt.format(path, tokens.length);
-    if (tokens.length > tokenize(agent.rag.vocab, ingest, false).length) {
-      agent.rag.ingest(text);
-      return(ingest);
+    auto tokens = embedModel.tokenize(text, false);
+    string ret = ingestFmt.format(path, tokens.length);
+    if (tokens.length > embedModel.tokenize(ret, false).length) {
+      embedModel.ingest(text);
+      return(ret);
     }
     return text;
   } catch (Exception e) { return format("Error: %s", e.msg); }
@@ -62,11 +62,11 @@ string readPDF(string path) {
 @Tool("Read / Load into RAG the contents of a file located at path.")
 string readFile(string path) {
   auto text = readText(path);
-  auto tokens = tokenize(agent.rag.vocab, text, false);
-  string ingest = ingestFmt.format(path, tokens.length);
-  if (tokens.length >  tokenize(agent.rag.vocab, ingest, false).length) {
-    agent.rag.ingest(text);
-    return(ingest);
+  auto tokens = embedModel.tokenize(text, false);
+  string ret = ingestFmt.format(path, tokens.length);
+  if (tokens.length > embedModel.tokenize(ret, false).length) {
+    embedModel.ingest(text);
+    return(ret);
   }
   return text;
 }

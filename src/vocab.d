@@ -9,21 +9,19 @@ import std.array : appender;
 import std.string : toStringz;
 import std.format : format;
 
+import model : LlamaModel;
 import tools : clean;
 
 enum llama_token LLAMA_TOKEN_NULL = -1;
 
-
 struct ChatTemplate {
-  llama_vocab* vocab;                 /// Model vocabulary pointer
   const(char)* tmplStr;               /// Chat template from llama_model_chat_template(model, null)
   llama_chat_message[] messages;      /// Persistent history
   bool canThink = false;              /// Is the model able to think ?
 
-  this(llama_vocab* vocab, const(char)* tmplStr) {
-    this.vocab = vocab;
+  this(LlamaModel m, const(char)* tmplStr) {
     this.tmplStr = tmplStr;
-    if(this.getToken("<think>", false) != LLAMA_TOKEN_NULL) canThink = true;
+    if(this.getToken(m, "<think>", false) != LLAMA_TOKEN_NULL) canThink = true;
   }
 
   // Add a message to the history for role
@@ -53,28 +51,28 @@ struct ChatTemplate {
   }
 
   // Does a string translate into a single llama_token
-  llama_token getToken(string token, bool add_special = true, bool parse_special = true) {
-    llama_token[] result = tokenize(vocab, token, add_special, parse_special);
+  llama_token getToken(LlamaModel m, string token, bool add_special = true, bool parse_special = true) {
+    llama_token[] result = m.tokenize(token, add_special, parse_special);
     if (result.length == 1 && result[0] != LLAMA_TOKEN_NULL) return(result[0]);
     return(LLAMA_TOKEN_NULL);
   }
 }
 
 // Tokenize a string prompt into tokens
-llama_token[] tokenize(llama_vocab* vocab, string prompt, bool add_special = true, bool parse_special = true) {
-  int n_tokens = -llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, null, 0, add_special, parse_special);
+llama_token[] tokenize(LlamaModel m, string prompt, bool add_special = true, bool parse_special = true) {
+  int n_tokens = -llama_tokenize(m.vocab, prompt.ptr, cast(int)prompt.length, null, 0, add_special, parse_special);
   llama_token[] tokens;
   tokens.length = n_tokens;
-  llama_tokenize(vocab, prompt.ptr, cast(int)prompt.length, tokens.ptr, n_tokens, add_special, parse_special);
+  llama_tokenize(m.vocab, prompt.ptr, cast(int)prompt.length, tokens.ptr, n_tokens, add_special, parse_special);
   return(tokens);
 }
 
 // De-tokenize a list of tokens tokens into a string
-string detokenize(llama_vocab* vocab, llama_token[] tokens) {
+string detokenize(LlamaModel m, llama_token[] tokens) {
   auto result = appender!string;
   char[256] buf = 0;
   foreach (token; tokens) {
-    int n = llama_token_to_piece(vocab, token, buf.ptr, buf.sizeof, 0, true);
+    int n = llama_token_to_piece(m.vocab, token, buf.ptr, buf.sizeof, 0, true);
     if (n > 0) result ~= cast(string)buf[0..n];
   }
   return result.data;

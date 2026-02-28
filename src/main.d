@@ -10,12 +10,11 @@ import std.file : readText;
 import std.stdio : writefln, writeln, write, writef, stdout, readln;
 import std.string : strip;
 
-import agent : agent, agentStep, compressHistory;
+import agent : agent, agentModel, agentStep, compressHistory;
 import console : setupConsole;
 import context : processTokens;
 import files : readFile;
-import model : createCtxParams, loadLlamaModel;
-import rag : RAG, loadRAG, cleanup;
+import model : M, MODEL_PATHS, loadModel, nModels, free;
 import sampler : createSampler;
 import tools : toolsToJSON;
 import utils : checkNotNull;
@@ -26,35 +25,17 @@ int main(string[] args) {
   scope(exit) llama_backend_free();
   setupConsole();
 
-  // Setup RAG
-  agent.rag = loadRAG(agent.LLM_EMBED_MODEL);
-  scope(exit) agent.rag.cleanup();
-  // Setup Llama and Load model
-  llama_model* model = loadLlamaModel(agent.LLM_AGENT_MODEL).checkNotNull("Failed to load agent model");
-  scope(exit) llama_model_free(model);
-
-  // Get vocab from model
-  llama_vocab* vocab = llama_model_get_vocab(model);
-
-  // Create context
-  llama_context_params ctx_params = model.createCtxParams(12_288);
-  llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create context");
-  scope(exit) llama_free(ctx);
-
-   // Create sampler
-  llama_sampler* sampler = createSampler();
-  scope(exit) llama_sampler_free(sampler);
-
-  // Load MTMD model
-  mtmd_context_params mparams = mtmd_context_params_default();
-  mparams.use_gpu = true;
-  mparams.n_threads = 4;
-  agent.vision = mtmd_init_from_file(agent.LLM_MTMD_MODEL, model, mparams).checkNotNull("Failed to load vision model");;
-  scope(exit) mtmd_free(agent.vision);
+  // Load models
+  agent.models[M.agent] = loadModel(MODEL_PATHS[M.agent], 3 * 2048);
+  agent.models[M.summary] = loadModel(MODEL_PATHS[M.summary], 2048);
+  agent.models[M.embed] = loadModel(MODEL_PATHS[M.embed], 512, 512, 512, 8, true);
+  agent.models[M.agent].sampler = createSampler();
+  agent.models[M.summary].sampler = createSampler(0.3f);
+  scope(exit) { foreach (m; 0..nModels) agent.models[m].free(); }
 
   // Construct system, user, and assistant prompts and generate a full prompt
-  size_t thinkBudget = 256;
-  auto tmpl = ChatTemplate(vocab, llama_model_chat_template(model, null));
+  size_t thinkBudget = 1024;
+  auto tmpl = ChatTemplate(agentModel, llama_model_chat_template(agentModel.model, null));
   
   string systemFmt = readText("templates/agent.txt");
   string tools = toolsToJSON();
@@ -66,18 +47,18 @@ int main(string[] args) {
 
   // Create a batch and process prompt
   llama_pos cPos;
-  llama_batch batch = llama_batch_init(ctx.llama_n_batch(), 0, 1);
+  llama_batch batch = llama_batch_init(agentModel.llama_n_batch(), 0, 1);
   scope(exit) llama_batch_free(batch);
 
   // Process system prompt into KV cache once
-  writefln("Context size: %d, processing system prompt.", ctx.llama_n_ctx());
-  if (!ctx.processTokens(agent.vision, tmpl.render(false), [], cPos, true)) { 
+  writefln("Context size: %d, processing system prompt.", agentModel.llama_n_ctx());
+  if (!agentModel.processTokens(tmpl.render(false), [], cPos, true)) { 
     writefln("Failed to eval system prompt"); return 1;
   }
 
   do { // Main user REPL loop
     if (!oneShot) {
-      writef("\nYou [%d/%dkb]: ", cPos / 1024, ctx.llama_n_ctx() / 1024); stdout.flush(); user = readln().strip();
+      writef("\nYou [%d/%dkb]: ", cPos / 1024, agentModel.llama_n_ctx() / 1024); stdout.flush(); user = readln().strip();
       if (user == "" || user == "exit" || user == "quit") break;
     }
 
@@ -85,20 +66,20 @@ int main(string[] args) {
     size_t prevLen = tmpl.render(false).length;
     tmpl.add("user", user);
     auto turn = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-    if (!ctx.processTokens(agent.vision, turn, agent.pendingBitmaps, cPos)) {
+    if (!agentModel.processTokens(turn, agent.pendingBitmaps, cPos)) {
       writefln("[WARN] User turn overflow — compressing history and retrying...");
-      if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) { writefln("[ERROR] Failed to compress history"); break; }
+      if (!compressHistory(agentModel, tmpl, cPos, thinkBudget)) { writefln("[ERROR] Failed to compress history"); break; }
       size_t retryPrevLen = tmpl.render(false).length;
       tmpl.add("user", user);
       auto retryTurn = tmpl.delta(retryPrevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-      if (!ctx.processTokens(agent.vision, retryTurn, agent.pendingBitmaps, cPos)) { writefln("[ERROR] Failed even after compression"); break; }
+      if (!agentModel.processTokens(retryTurn, agent.pendingBitmaps, cPos)) { writefln("[ERROR] Failed even after compression"); break; }
     }
     agent.pendingBitmaps = [];
 
     // Agent loop, max 10 iterations
     int maxIterations = 10;
     for (int i = 0; i < maxIterations; i++) {
-      if (!ctx.agentStep(tmpl, sampler, batch, i, cPos, thinkBudget)) break;
+      if (!agentModel.agentStep(tmpl, batch, i, cPos, thinkBudget)) break;
     }
   } while (!oneShot);
 

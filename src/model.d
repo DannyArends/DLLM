@@ -5,6 +5,8 @@
 
 import includes;
 
+import std.string : toStringz;
+
 import utils : checkNotNull;
 
 struct LlamaBase {
@@ -48,6 +50,7 @@ llama_context_params createCtxParams(llama_model* model, size_t n_ctx = 4096,
   ctx_params.n_ubatch = cast(uint)n_ubatch;
   ctx_params.n_threads = cast(uint)n_threads;
   ctx_params.embeddings = embeddings;
+  if (embeddings) ctx_params.pooling_type = LLAMA_POOLING_TYPE_MEAN;
   ctx_params.type_k = GGML_TYPE_Q8_0;
   ctx_params.type_v = GGML_TYPE_Q8_0;
   ctx_params.offload_kqv = true;
@@ -56,20 +59,14 @@ llama_context_params createCtxParams(llama_model* model, size_t n_ctx = 4096,
   return(ctx_params);
 }
 
-// Still used now, needs to be removed after we use loadModel
-llama_model* loadLlamaModel(const(char)* path) {
-  // Load model
-  llama_model_params model_params = llama_model_default_params();
-  model_params.n_gpu_layers = -1;
-  return(llama_model_load_from_file(path, model_params));
-}
-
 // Load a LMM
-LlamaModel loadModel(const(char)*[] paths, size_t n_ctx = 4096, 
+LlamaModel loadModel(immutable(string[]) paths, size_t n_ctx = 4096, 
                      size_t n_batch = 1024, size_t n_ubatch = 1024, 
                      size_t n_threads = 8, bool embeddings = false) {
   LlamaModel m;
-  m.model = loadLlamaModel(paths[0]).checkNotNull("Failed to load model");
+  llama_model_params model_params = llama_model_default_params();
+  model_params.n_gpu_layers = -1;
+  m.model = llama_model_load_from_file(toStringz(paths[0]), model_params).checkNotNull("Failed to load model");
   m.vocab = llama_model_get_vocab(m.model);
   llama_context_params p = m.model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);
   m.ctx = llama_init_from_model(m.model, p).checkNotNull("Failed to create context");
@@ -77,7 +74,7 @@ LlamaModel loadModel(const(char)*[] paths, size_t n_ctx = 4096,
     mtmd_context_params mparams = mtmd_context_params_default();
     mparams.use_gpu   = true;
     mparams.n_threads = 4;
-    m.vision = mtmd_init_from_file(paths[1], m.model, mparams).checkNotNull("Failed to load vision model");
+    m.vision = mtmd_init_from_file(toStringz(paths[1]), m.model, mparams).checkNotNull("Failed to load vision model");
   }
   return m;
 }

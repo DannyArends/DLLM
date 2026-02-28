@@ -11,70 +11,53 @@ import std.stdio : writefln, writeln;
 
 import agent : agent;
 import context : generateTokens, processTokens;
-import model : createCtxParams, loadLlamaModel;
+import model : LlamaModel;
 import sampler : createSampler;
 import tools : clean;
-import utils : checkNotNull;
 import vocab : ChatTemplate, tokenize, detokenize;
 
-// Main summary function, loads model, creates context and call the recursive summarize function
-string summarize(string text, size_t n_ctx = 4096, 
-                 size_t n_batch = 1024, size_t n_ubatch = 1024, 
-                 size_t n_threads = 8, bool embeddings = false) {
-  writeln("[Summarizing]");
-  llama_model* model = loadLlamaModel(agent.LLM_SUMMARY_MODEL).checkNotNull("Failed to load summary model");
-  scope(exit){ llama_model_free(model); }
-
-  llama_context_params ctx_params = model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);
-  llama_context* ctx = llama_init_from_model(model, ctx_params).checkNotNull("Failed to create summary context");
-  scope(exit){ llama_free(ctx); }
-
-  llama_sampler* sampler = createSampler(0.3f);   // Lower temperature for more factual summaries
-  scope(exit) llama_sampler_free(sampler);
-
-  auto vocab = llama_model_get_vocab(model);
-  auto tmplStr = llama_model_chat_template(model, null);
-  return(summarize(ctx, sampler, vocab, tmplStr, text, n_ctx));
-}
-
 // Summarize a sliding window 'chunk'
-string summarizeChunk(llama_context* ctx, llama_sampler* sampler, llama_vocab* vocab, const(char)* tmplStr, string chunk, int responseBudget) {
-  auto tmpl = ChatTemplate(vocab, tmplStr);
+string summarizeChunk(LlamaModel m, const(char)* tmplStr, string chunk, int responseBudget) {
+  auto tmpl = ChatTemplate(m, tmplStr);
   tmpl.add("system", "You are a precise information extractor. Extract and preserve all facts, entities, names, numbers, relationships, and key details. Do not omit specifics.");
   tmpl.add("user", "Extract all key information from:\n" ~ chunk);
-  llama_memory_clear(llama_get_memory(ctx), true);
+  llama_memory_clear(llama_get_memory(m), true);
   llama_pos cPos;
-  if (!ctx.processTokens(tmpl.render(true) ~ tmpl.noThinkBootstrap(), cPos, true)) return "";
-  llama_batch batch = llama_batch_init(ctx.llama_n_batch(), 0, 1);
+  if (!m.processTokens(tmpl.render(true) ~ tmpl.noThinkBootstrap(), cPos, true)) return "";
+  llama_batch batch = llama_batch_init(m.llama_n_batch(), 0, 1);
   scope(exit) llama_batch_free(batch);
   int nGen;
-  return(clean(ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, responseBudget, 0, false)));
+  return(clean(m.generateTokens(tmpl, batch, cPos, nGen, responseBudget, 0, false)));
 }
 
 // Recursive summarize function
-string summarize(llama_context* ctx, llama_sampler* sampler, llama_vocab* vocab, const(char)* tmplStr, string text, size_t n_ctx) {
-  llama_token[] allTokens = tokenize(vocab, text, false);
+string summarize(LlamaModel m, string text) {
+  writeln("[Summarizing]");
+  llama_memory_clear(llama_get_memory(m), true);
+  auto tmplStr = llama_model_chat_template(m.model, null);
+
+  llama_token[] allTokens = m.tokenize(text, false);
   size_t PROMPT_OVERHEAD = 256;
   size_t RESPONSE_BUDGET = cast(int)min(allTokens.length / 4, 1024);
-  size_t windowTokens = n_ctx - PROMPT_OVERHEAD - RESPONSE_BUDGET;
+  size_t windowTokens = m.llama_n_ctx() - PROMPT_OVERHEAD - RESPONSE_BUDGET;
 
   if (allTokens.length <= windowTokens)
-    return summarizeChunk(ctx, sampler, vocab, tmplStr, text, cast(int)RESPONSE_BUDGET);
+    return m.summarizeChunk(tmplStr, text, cast(int)RESPONSE_BUDGET);
 
   size_t overlap = windowTokens / 10;
   size_t step    = windowTokens - overlap;
   string[] partials;
   for (size_t i = 0; i < allTokens.length; i += step) {
     size_t end = (i + windowTokens < allTokens.length) ? i + windowTokens : allTokens.length;
-    auto partial = summarizeChunk(ctx, sampler, vocab, tmplStr, detokenize(vocab, allTokens[i..end]), cast(int)RESPONSE_BUDGET);
+    auto partial = m.summarizeChunk(tmplStr, m.detokenize(allTokens[i..end]), cast(int)RESPONSE_BUDGET);
     if (partial.length > 0) partials ~= partial;
   }
 
   string joined = partials.join("\n");
-  llama_token[] joinedTokens = tokenize(vocab, joined, false);
+  llama_token[] joinedTokens = m.tokenize(joined, false);
   if (joinedTokens.length >= allTokens.length) {
     writefln("[WARN] Summarize: no progress, truncating to fit context");
-    return detokenize(vocab, joinedTokens[$-min(joinedTokens.length, windowTokens)..$]);
+    return(m.detokenize(joinedTokens[$-min(joinedTokens.length, windowTokens)..$]));
   }
-  return summarize(ctx, sampler, vocab, tmplStr, joined, n_ctx);
+  return m.summarize(joined);
 }

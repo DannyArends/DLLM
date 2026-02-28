@@ -17,8 +17,8 @@ struct Tool {
 
 // Tool parameter definition
 struct ToolParam {
-    string name;
-    string type;
+  string name;
+  string type;
 }
 
 // Tool definition

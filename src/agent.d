@@ -13,54 +13,50 @@ import context : generateTokens, processTokens;
 import tools : ToolCall, toolsToJSON, clean, parseToolCalls, executeToolCalls;
 import vocab : ChatTemplate, tokenize;
 import summary : summarize;
-import rag : RAG;
+import model : LlamaModel, M, nModels;
+import rag : Chunk;
 
 struct Agent {
-  /// Several model paths that are used by the Agent (Embeddings, Agent, MTMD, and Summary)
-  const(char)* LLM_EMBED_MODEL    = "../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf";
-  const(char)* LLM_AGENT_MODEL    = "../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf";
-  const(char)* LLM_MTMD_MODEL     = "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf";
-  const(char)* LLM_SUMMARY_MODEL  = "../LLMs/Qwen3-0.6B.Q4_K_M.gguf";
-
-  bool verbose = false;                   /// Verbosity
-  mtmd_context* vision;                   /// Vision context
-  RAG rag = void;                         /// RAG
-  mtmd_bitmap*[] pendingBitmaps = [];     /// Images to upload in KV
+  bool verbose = false;
+  LlamaModel[nModels] models;
+  Chunk[] ragIndex;
+  mtmd_bitmap*[] pendingBitmaps = [];
 }
 
 __gshared Agent agent = Agent();          /// Global agent
 
+ref LlamaModel agentModel() { return agent.models[M.agent]; }
+ref LlamaModel summaryModel() { return agent.models[M.summary]; }
+ref LlamaModel embedModel() { return agent.models[M.embed]; }
+
 // A single step in the agent: token generation for thinking and response
-bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler,
+bool agentStep(ref LlamaModel m, ref ChatTemplate tmpl,
                ref llama_batch batch, size_t i, ref llama_pos cPos, size_t thinkBudget) {
-  int nLeft = cast(int)(ctx.llama_n_ctx() - cPos);
+  int nLeft = cast(int)(m.ctx.llama_n_ctx() - cPos);
   if (nLeft <= 0) {
-    if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) return(false);
-    nLeft = cast(int)(ctx.llama_n_ctx() - cPos);
+    if (!compressHistory(m, tmpl, cPos, thinkBudget)) return(false);
+    nLeft = cast(int)(m.ctx.llama_n_ctx() - cPos);
   }
   if (agent.verbose) writefln("\n=== I[%d], cPos %d, n_ctx left: %d ===", i + 1, cPos, nLeft);
   int nGen;
-  auto response = ctx.generateTokens(tmpl, sampler, batch, cPos, nGen, nLeft, thinkBudget);
+  auto response = m.generateTokens(tmpl, batch, cPos, nGen, nLeft, thinkBudget);
   writeln(); // Should we a memory compacting trigger here ?
 
   ToolCall[] toolCalls = response.parseToolCalls();
   if (toolCalls.length == 0) return false;
 
-  llama_memory_seq_rm(ctx.llama_get_memory(), 0, cPos - nGen, cPos);
+  llama_memory_seq_rm(m.ctx.llama_get_memory(), 0, cPos - nGen, cPos);
   cPos -= nGen;
 
   size_t prevLen = tmpl.render(false).length;
   auto cleaned = response.clean();
   tmpl.add("assistant", cleaned);
 
-  int remainingCtx;
-  auto vocab = llama_model_get_vocab(llama_get_model(ctx));
-
   foreach (result; toolCalls.executeToolCalls()) {
-    remainingCtx = cast(int)(ctx.llama_n_ctx() - cPos);
-    llama_token[] resultTokens = tokenize(vocab, result, false);
+    int remainingCtx = cast(int)(m.ctx.llama_n_ctx() - cPos);
+    llama_token[] resultTokens = m.tokenize(result, false);
     if (cast(int)resultTokens.length > remainingCtx) {
-        string shortened = summarize(result);
+        string shortened = summaryModel.summarize(result);
         tmpl.add("tool", shortened.length > 0 ? shortened : "[Tool output too large, summarization failed]");
     } else {
         tmpl.add("tool", result);
@@ -69,13 +65,13 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
   auto result = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
   if (agent.verbose) writefln("=== Result ===\n%s===", result);
 
-  if (!ctx.processTokens(agent.vision, result, agent.pendingBitmaps, cPos)) {
+  if (!m.processTokens(result, agent.pendingBitmaps, cPos)) {
    writefln("[WARN] Continuation tokens overflow — compressing and retrying...");
-    if (!compressHistory(ctx, tmpl, cPos, thinkBudget)) return false;
+    if (!m.compressHistory(tmpl, cPos, thinkBudget)) return false;
 
     // Retry with fresh context
     auto retryResult = tmpl.delta(tmpl.render(false).length, true) ~ tmpl.thinkBootstrap(thinkBudget);
-    if (!ctx.processTokens(agent.vision, retryResult, agent.pendingBitmaps, cPos)) {
+    if (!m.processTokens(retryResult, agent.pendingBitmaps, cPos)) {
       writefln("[ERROR] Failed even after compression");
       return(false);
     }
@@ -85,7 +81,7 @@ bool agentStep(llama_context* ctx, ref ChatTemplate tmpl, llama_sampler* sampler
 }
 
 // Summarize conversation history down to system + summary, rebuild KV cache
-bool compressHistory(llama_context* ctx, ref ChatTemplate tmpl, ref llama_pos cPos, size_t thinkBudget) {
+bool compressHistory(ref LlamaModel m, ref ChatTemplate tmpl, ref llama_pos cPos, size_t thinkBudget) {
   writefln("[WARN] Context overflow — compressing conversation history...");
 
   // Collect all non-system messages into one text blob
@@ -94,7 +90,7 @@ bool compressHistory(llama_context* ctx, ref ChatTemplate tmpl, ref llama_pos cP
     blob ~= fromStringz(msg.role) ~ ": " ~ fromStringz(msg.content) ~ "\n";
   }
 
-  string summary = summarize(blob.data); // Summarize the blob
+  string summary = summaryModel.summarize(blob.data); // Summarize the blob
   if (summary.length == 0) { writefln("[ERROR] compressHistory: summarize() returned empty"); return false; }
 
   // Rebuild tmpl: keep system, replace rest with summary
@@ -103,10 +99,10 @@ bool compressHistory(llama_context* ctx, ref ChatTemplate tmpl, ref llama_pos cP
   tmpl.add("assistant", summary);
 
   // Rebuild KV cache from scratch
-  llama_memory_clear(llama_get_memory(ctx), true);
+  llama_memory_clear(llama_get_memory(m.ctx), true);
   cPos = 0;
   auto prompt = tmpl.render(true) ~ tmpl.thinkBootstrap(thinkBudget);
-  if (!ctx.processTokens(agent.vision, prompt, [], cPos, true)) {
+  if (!m.processTokens(prompt, [], cPos, true)) {
     writefln("[ERROR] Failed to process compressed history");
     return(false);
   }

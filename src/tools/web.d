@@ -14,7 +14,7 @@ import std.stdio : writefln;
 import std.string : strip, fromStringz;
 import std.uri : encodeComponent;
 
-import agent : agent;
+import agent : agent, embedModel;
 import files : getTempPath;
 import rag : ingest;
 import tools : Tool, RegisterTools;
@@ -50,11 +50,11 @@ string webFetch(string url) {
     // Collapse whitespace
     content = replaceAll(content, regex(r"\s+"), " ");
     content = content.strip();
-    auto tokens = tokenize(agent.rag.vocab, content, false);
-    string ingest = ingestWWWFmt.format(url, tokens.length);
-    if (tokens.length > tokenize(agent.rag.vocab, ingest, false).length) {
-      agent.rag.ingest(content);
-      return(ingest);
+    auto tokens = embedModel.tokenize(content, false);
+    string ret = ingestWWWFmt.format(url, tokens.length);
+    if (tokens.length > embedModel.tokenize(ret, false).length) {
+      embedModel.ingest(content);
+      return(ret);
     }
     return(content);
   } catch (Exception e) { return "Error: " ~ fromStringz(e.msg); }
