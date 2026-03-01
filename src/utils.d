@@ -28,7 +28,7 @@ extern(C) void silent_log(ggml_log_level level, const char* text, void* user_dat
 }
 
 // Setup console so windows can 'handle emoji'
-void setupConsole(){
+void setupConsole() {
   version(Windows) { SetConsoleOutputCP(65001); }
   llama_log_set(&silent_log, null);
   mtmd_helper_log_set(&silent_log, null);

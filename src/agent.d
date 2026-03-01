@@ -116,4 +116,3 @@ llama_token[] generate(ref Agent agent, bool verbose = true) {
   agent.kvPos += i;
   return(response);
 }
-
