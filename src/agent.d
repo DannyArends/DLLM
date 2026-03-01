@@ -40,7 +40,7 @@ string prompt(ref Agent agent, bool addAssistant = true) {
   string prompt = buf.idup;
   if(agent.verbose) writefln("===\n%s===", prompt);
   prompt = format("%s", prompt[agent.promptPos .. n]);
-  if(addAssistant) prompt ~= "<think>\nBudget: 1024 tokens. Be concise.\n";
+  if(addAssistant) prompt ~= "<think>\nBudget: 2048 tokens\n";
   agent.promptPos = n0;
   return(prompt);
 }

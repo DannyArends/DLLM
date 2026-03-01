@@ -11,6 +11,7 @@ import rag : RAG;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
 import tools : toolsToJSON, parse;
+import time : currentDate;
 
 int main(string[] args) {
   // Initialize Llama and set UTF-8 console output
@@ -38,7 +39,8 @@ int main(string[] args) {
   scope (exit) { agent.free(); }
 
   // Add the system prompt with tools
-  agent.history ~= llama_chat_message(toStringz("system"), toStringz(format(readText("templates/agent.txt"), toolsToJSON())));
+  agent.history ~= llama_chat_message(toStringz("system"), 
+                                      toStringz(format(readText("templates/agent.txt"), currentDate(), toolsToJSON())));
   agent.process(agent.prompt(false));
 
   // Oneshot or interactive mode ?
