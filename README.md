@@ -1,4 +1,4 @@
-## DLLM - D Language Interface for llama.cpp ✨
+## DLLM - D Language 🤖 on 🦙.cpp
 A minimal, clean D language interface for running a local multimodal LLM agent using [importC](https://dlang.org/spec/importc.html) 
 around [llama.cpp](https://github.com/ggerganov/llama.cpp). DLLM exposes the full llama.cpp C API directly from D with no Python 
 overhead, supporting vision-language models via the mtmd API, automatic chat template detection, and an extensible tool-calling 
