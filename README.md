@@ -21,8 +21,8 @@ Compilation guide [here](deps/README.md)
 - **llama.cpp**: Bundeled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
 
-## Run ⚙️
-Execute with prompt
+### Run ⚙️
+Execute with prompt to OneShot:
 ```shell
   dub -- "What is your name?"
   dub -- "What day of the week is today?"
@@ -32,6 +32,11 @@ Execute with prompt
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
   dub -- "What date is it today ? and how is the weather today in Newcastle upon Tyne (UK) ?"
   dub -- "Download the image at https://picsum.photos/400, load it, and describe it"
+```
+
+Or start an interactive session:
+```shell
+  dub
 ```
 
 ### Contributing 🙌
