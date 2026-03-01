@@ -25,7 +25,7 @@ mixin RegisterTools;
 
 string ingestFmt = "File '%s' (%d characters, %d tokens), ingested as %d chunks into RAG";
 
-@Tool("Query the RAG index with a question. Returns the most relevant excerpts.")
+@Tool("Query the RAG index with a question, returns the most relevant excerpts.")
 string queryRAG(string question) {
   auto results = agent.rag.query(question);
   return results.length > 0 ? results.join("\n---\n") : "No relevant results found.";
@@ -45,7 +45,7 @@ string pathExists(string path) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Load an image from a file path so it can be analyzed. Returns a placeholder that will be replaced with the image content.")
+@Tool("Load an image at path into the vision context. The returned [image] marker embeds the image in the tool response.")
 string loadImage(string path) {
   try {
     if (agent.vision is null) return "Error: vision context not initialized";
@@ -56,7 +56,7 @@ string loadImage(string path) {
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 
-@Tool("Get file size in bytes. Returns error if file doesn't exist or is a directory.")
+@Tool("Get file size in bytes. Returns an error if the file doesn't exist or is a directory.")
 string fileSize(string path) {
   try {
     if (!exists(path)) return "Error: File does not exist";
@@ -107,4 +107,3 @@ string writeFile(string content) {
     return JSONValue(["path": JSONValue(path), "length": JSONValue(content.length)]).toString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
-

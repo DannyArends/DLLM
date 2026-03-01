@@ -32,15 +32,7 @@ string currentDate() {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Todays day of the week (mon, tue, wed, etc.)")
-string currentDayOfWeek() {
-  try {
-    auto now = Clock.currTime();
-    return to!string(now.dayOfWeek);
-  } catch (Exception e) { return(format("Error: %s", e.msg)); }
-}
-
-@Tool("The day of the week for any date (YYYY-MM-DD) (mon, tue, wed, etc.)")
+@Tool("The day of the week for a date (YYYY-MM-DD) (mon, tue, wed, etc.)")
 string dayOfWeek(string date) {
   try {
     auto dt = Date.fromISOExtString(date);
@@ -58,7 +50,7 @@ string addDays(string date, string days) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Calculate the number of days between two dates (format: YYYY-MM-DD). Returns positive if date2 is after date1.")
+@Tool("Calculate the number of days between two dates (format: YYYY-MM-DD). Positive if date2 is after date1, negative otherwise.")
 string daysBetween(string date1, string date2) {
   try {
     auto d1 = Date.fromISOExtString(date1);
@@ -68,12 +60,12 @@ string daysBetween(string date1, string date2) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Check if a date (YYYY-MM-DD) is in the past. Returns 'true' or 'false'.")
+@Tool("Check if a date (YYYY-MM-DD) is in the 'Past' or 'Future'.")
 string isDatePast(string date) {
   try {
     auto checkDate = Date.fromISOExtString(date);
     auto today = cast(Date)Clock.currTime();
-    return checkDate < today ? "true" : "false";
+    return checkDate < today ? "Past" : "Future";
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 

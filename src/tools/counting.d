@@ -12,14 +12,14 @@ import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 
-@Tool("Count the number of words in a text.")
+@Tool("Count the number of words in text.")
 string countWords(string text) {
   try {
     return to!string(text.strip().split().length);
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Count how many times a substring appears in text.")
+@Tool("Count how many times substring appears in text.")
 string nOccurrences(string text, string substring) {
   try {
     return to!string(text.count(substring));

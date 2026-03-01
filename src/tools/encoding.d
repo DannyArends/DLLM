@@ -16,35 +16,35 @@ import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 
-@Tool("Encode text to Base64 string")
+@Tool("Encode text as Base64")
 string base64Encode(string text) {
   try {
     return Base64.encode(cast(ubyte[])text);
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Decode Base64 string to text")
+@Tool("Decode Base64 to text")
 string base64Decode(string encoded) {
   try {
     return cast(string)Base64.decode(encoded);
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Calculate MD5 hash of text. Returns lowercase hexadecimal string.")
+@Tool("Calculate the MD5 hash of text, returns a lowercase hexadecimal string.")
 string md5Hash(string text) {
   try {
     return toHexString(md5Of(text.representation)).to!string.toLower();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Calculate SHA256 hash of text. Returns lowercase hexadecimal string.")
+@Tool("Calculate the SHA256 hash of text, Returns lowercase hexadecimal string.")
 string sha256Hash(string text) {
   try {
     return toHexString(sha256Of(text.representation)).to!string.toLower();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Generate a random UUID (Universally Unique Identifier)")
+@Tool("Generate a random UUID (Universally Unique IDentifier)")
 string generateUUID() {
   try {
     return randomUUID().toString();
