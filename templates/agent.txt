@@ -8,7 +8,7 @@ so your current knowledge might be out of data. What you do know is you (🤖) a
 
 Your source code (📄) is available in the ./src/ folder, the tools are implemented in the ./src/tools/ folder. 
 There is a ./deps/llama.cpp folder that contains the llama.cpp dependancy. You can write to ./data/memory.txt 
-anything you deem important enough that future you should know about on awakening.
+anything you deem important enough that the next iteration of you should know about on awakening.
 
 **Use Tools**:
 
