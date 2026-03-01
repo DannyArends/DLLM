@@ -7,8 +7,8 @@ import std.array : appender;
 import std.format : format;
 import std.json : JSONValue, parseJSON;
 import std.regex : regex, matchAll;
-import std.string : lastIndexOf;
 import std.stdio : writefln, writef, writeln, write;
+import std.string : lastIndexOf;
 
 // UDA for marking tool functions
 struct Tool {
@@ -86,16 +86,8 @@ mixin template RegisterTools() {
   }
 }
 
-string clean(string response){
-  auto thinkEnd = response.lastIndexOf("</think>\n");
-  if (thinkEnd >= 0) response = response[thinkEnd + "</think>\n".length .. $];
-  return(response);
-}
-
 // Parse tool call from model output
-ToolCall[] parseToolCalls(string response) {
-  response = response.clean();
-
+ToolCall[] parse(string response) {
   ToolCall[] calls;
   auto pattern = regex(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", "gs");
   foreach(match; matchAll(response, pattern)) {
@@ -117,18 +109,6 @@ string executeTool(string toolName, JSONValue args) {
     }
     return("Error: unknown tool '" ~ toolName ~ "'");
   } catch (Exception e) { return(format("Error executing tool: %s", e.msg)); }
-}
-
-// Execute all tool calls and format responses
-string[] executeToolCalls(ToolCall[] calls) {
-  string[] result;
-  foreach(i, call; calls) {
-    if (i > 0) result ~= "\n";
-    string toolResult = executeTool(call.name, call.arguments);
-    JSONValue response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
-    result ~= response.toString();
-  }
-  return(result);
 }
 
 // Generate tools JSON for system prompt

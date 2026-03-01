@@ -4,74 +4,52 @@
  */
 
 import includes;
+import utils;
 
-import std.algorithm : min, sort;
-import std.array : appender;
-import std.math : sqrt;
-import std.stdio : writefln;
+import model : detokenize, LlamaModel, tokenize;
 
-import vocab : tokenize, detokenize;
-import agent : agent;
-import model : LlamaModel, M;
-import utils : checkNotNull;
-
-// RAG Chunk
 struct Chunk {
   string text;
   float[] embedding;
 }
 
+struct RAG {
+  LlamaModel model;
+  Chunk[] index = [];
+  alias model this;
+}
+
+// Compute embeddings for tokens
+float[] embed(RAG rag, llama_token[] tokens) {
+  llama_batch batch = llama_batch_get_one(tokens.ptr, cast(int)tokens.length);
+  if (llama_encode(rag.ctx, batch) != 0) { writeln("encode failed"); return []; }
+  float* e = llama_get_embeddings_seq(rag.ctx, 0);
+  if (e is null) { writeln("embeddings null"); return []; }
+  return(e[0..llama_model_n_embd(rag)].dup);
+}
+
 // Ingest a document into the RAG
-void ingest(LlamaModel m, string text) {
-  llama_token[] all = m.tokenize(text, false);
-  for (size_t i = 0; i < all.length; i += m.llama_n_ubatch()) {
-    auto tokens = all[i..min(i + m.llama_n_ubatch(), all.length)];
-    string chunk = m.detokenize(tokens);
-    auto emb = m.embed(tokens);
-    if (emb.length > 0) agent.ragIndex ~= Chunk(chunk, emb);
+size_t[2] ingest(ref RAG rag, string txt, size_t batchsize = 256) {
+  llama_token[] all = rag.tokenize(txt, false);
+  size_t nChunk = 0;
+  for (size_t i = 0; i < all.length; i += batchsize / 2) {
+    auto tokens = all[i .. min(i + batchsize, all.length)];
+    rag.index ~= Chunk(rag.detokenize(tokens), rag.embed(tokens));
+    nChunk++;
   }
+  return([all.length, nChunk]);
 }
 
 // Query the RAG
-string[] query(LlamaModel m, string q, int topK = 3) {
-  if (agent.ragIndex.length == 0) return [];
-  llama_token[] qTokens = m.tokenize(q, true);
-  if (qTokens.length > m.llama_n_ubatch())
-    qTokens = qTokens[0 .. m.llama_n_ubatch()];
-  float[] qEmbed = m.embed(qTokens);
-  if (qEmbed.length == 0) return [];
-  auto scored = new float[agent.ragIndex.length];
-  foreach (i, ref c; agent.ragIndex) scored[i] = cosineSimilarity(qEmbed, c.embedding);
-  auto indices = new size_t[agent.ragIndex.length];
-  foreach (i; 0..indices.length) indices[i] = i;
-  indices.sort!((a, b) => scored[a] > scored[b]);
-  string[] results;
-  foreach (i; 0..min(topK, indices.length)) results ~= agent.ragIndex[indices[i]].text;
-  return results;
+string[] query(RAG rag, string query, int topK = 3) {
+  float[] qEmbed = rag.embed(rag.tokenize(query, false));
+  auto scored = rag.index.map!(c => tuple(c.text, cosineSimilarity(qEmbed, c.embedding))).array;
+  auto ranked = scored.sort!((a, b) => a[1] > b[1]);
+  return ranked.take(topK).map!(t => t[0]).array;
 }
 
 // Cosine similarity between vectors a and b
 float cosineSimilarity(float[] a, float[] b) {
-  float dot = 0, normA = 0, normB = 0;
-  foreach (i; 0..a.length) { dot += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i]; }
-  float denom = sqrt(normA) * sqrt(normB);
-  if (denom == 0.0f) return 0.0f;
-  return dot / denom;
-}
-
-// Tokenize the text and get embeddings
-float[] embed(LlamaModel m, string text) { return(m.embed(m.tokenize(text, true))); }
-
-// Tokenize the text and get embeddings
-float[] embed(LlamaModel m, llama_token[] tokens) {
-  if (tokens.length > m.llama_n_ubatch()) {
-    writefln("[ERROR] embed: text too large for batch (%d > %d)", tokens.length, m.llama_n_ubatch());
-    return [];
-  }
-  llama_batch batch = llama_batch_get_one(tokens.ptr, cast(int)tokens.length);
-  if (llama_encode(m, batch) != 0) { writefln("[ERROR] embed: llama_encode failed"); return []; }
-  int n_embd = llama_model_n_embd(llama_get_model(m));
-  float* e = llama_get_embeddings_seq(m, 0);
-  if (!e) { writefln("[ERROR] embed: llama_get_embeddings returned null"); return []; }
-  return e[0..n_embd].dup;
+  float denom = sqrt(a.map!(x => x * x).sum) * sqrt(b.map!(x => x * x).sum);
+  return(denom == 0.0f ? 0.0f : zip(a, b).map!(t => t[0] * t[1]).sum / denom);
 }

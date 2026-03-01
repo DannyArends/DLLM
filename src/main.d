@@ -4,84 +4,49 @@
  */
 
 import includes;
+import utils;
 
-import std.format : format;
-import std.file : readText;
-import std.stdio : writefln, writeln, write, writef, stdout, readln;
-import std.string : strip;
-
-import agent : agent, agentModel, agentStep, compressHistory;
-import console : setupConsole;
-import context : processTokens;
-import files : readFile;
-import model : M, MODEL_PATHS, loadModel, nModels, free;
-import sampler : createSampler;
-import tools : toolsToJSON;
-import utils : checkNotNull;
-import vocab : ChatTemplate;
+import agent : Agent, agent, execute, prompt, process, generate, clean;
+import rag : RAG;
+import model : load, free, mp, cp, cpe;
+import tools : toolsToJSON, parse;
 
 int main(string[] args) {
-  llama_backend_init();  // Initialize backend and setup console for UTF output
-  scope(exit) llama_backend_free();
+  llama_backend_init();
+  scope (exit) { llama_backend_free(); }
+
   setupConsole();
 
-  // Load models
-  agent.models[M.agent] = loadModel(MODEL_PATHS[M.agent], 3 * 2048);
-  agent.models[M.summary] = loadModel(MODEL_PATHS[M.summary], 2048);
-  agent.models[M.embed] = loadModel(MODEL_PATHS[M.embed], 512, 512, 512, 8, true);
-  agent.models[M.agent].sampler = createSampler();
-  agent.models[M.summary].sampler = createSampler(0.3f);
-  scope(exit) { foreach (m; 0..nModels) agent.models[m].free(); }
+  // Embedding RAG model
+  auto embed = load(["../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf"], mp(), cpe());
 
-  // Construct system, user, and assistant prompts and generate a full prompt
-  size_t thinkBudget = 1024;
-  auto tmpl = ChatTemplate(agentModel, llama_model_chat_template(agentModel.model, null));
-  
-  string systemFmt = readText("templates/agent.txt");
-  string tools = toolsToJSON();
-  auto system = systemFmt.format(tools, thinkBudget);
-  tmpl.add("system", system);
+  // Agentic thinking model
+  auto model = load(["../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf", "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf"], mp(), cp());
+  llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+  scope (exit) { model.free(); }
 
-  bool oneShot = args.length > 1;
-  string user = oneShot ? args[($-1)] : "";
+  // Agent
+  agent = Agent(model: model, chat : llama_model_chat_template(model, null), rag : RAG(model : embed));
 
-  // Create a batch and process prompt
-  llama_pos cPos;
-  llama_batch batch = llama_batch_init(agentModel.llama_n_batch(), 0, 1);
-  scope(exit) llama_batch_free(batch);
+  // Add the system prompt
+  agent.history ~= llama_chat_message(toStringz("system"), toStringz(format(readText("templates/agent.txt"), toolsToJSON())));
+  agent.process(agent.prompt(false));
 
-  // Process system prompt into KV cache once
-  writefln("Context size: %d, processing system prompt.", agentModel.llama_n_ctx());
-  if (!agentModel.processTokens(tmpl.render(false), [], cPos, true)) { 
-    writefln("Failed to eval system prompt"); return 1;
-  }
+  // User interaction loop
+  do {
+    writef("You [%.1f/%.1fkb]: ", agent.kvPos / 1024f, llama_n_ctx(agent.ctx) / 1024f); stdout.fflush(); string user = readln().strip();
+    if (user == "" || user == "exit" || user == "quit") break;
+    agent.history ~= llama_chat_message(toStringz("user"), toStringz(user));
 
-  do { // Main user REPL loop
-    if (!oneShot) {
-      writef("\nYou [%d/%dkb]: ", cPos / 1024, agentModel.llama_n_ctx() / 1024); stdout.flush(); user = readln().strip();
-      if (user == "" || user == "exit" || user == "quit") break;
-    }
-
-    // Compute previous length, add user prompt
-    size_t prevLen = tmpl.render(false).length;
-    tmpl.add("user", user);
-    auto turn = tmpl.delta(prevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-    if (!agentModel.processTokens(turn, agent.pendingBitmaps, cPos)) {
-      writefln("[WARN] User turn overflow — compressing history and retrying...");
-      if (!compressHistory(agentModel, tmpl, cPos, thinkBudget)) { writefln("[ERROR] Failed to compress history"); break; }
-      size_t retryPrevLen = tmpl.render(false).length;
-      tmpl.add("user", user);
-      auto retryTurn = tmpl.delta(retryPrevLen, true) ~ tmpl.thinkBootstrap(thinkBudget);
-      if (!agentModel.processTokens(retryTurn, agent.pendingBitmaps, cPos)) { writefln("[ERROR] Failed even after compression"); break; }
-    }
-    agent.pendingBitmaps = [];
-
-    // Agent loop, max 10 iterations
-    int maxIterations = 10;
-    for (int i = 0; i < maxIterations; i++) {
-      if (!agentModel.agentStep(tmpl, batch, i, cPos, thinkBudget)) break;
-    }
-  } while (!oneShot);
-
+    // Agent tool call loop
+    do {
+      agent.process(agent.prompt(), false);
+      auto tokens = agent.generate();
+      auto response = agent.clean(tokens);
+      auto results = agent.execute(response.parse());
+      if (results.length == 0) break;
+      agent.history ~= llama_chat_message(toStringz("tool"), toStringz(results));
+    } while(true);
+  } while(agent.running);
   return(0);
 }

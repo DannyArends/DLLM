@@ -5,14 +5,37 @@
 
 import includes;
 
-import core.stdc.stdlib : exit;
-import std.stdio : writefln;
+public import core.stdc.stdlib : exit;
+public import core.stdc.stdio : fflush;
+
+public import std.algorithm : min, sort, map, sum, count;
+public import std.array : appender, array, replace;
+public import std.format : format;
+public import std.file : readText;
+public import std.json : JSONValue;
+public import std.math : sqrt;
+public import std.range : take, zip;
+public import std.stdio : readln, write, writeln, writef, writefln;
+public import std.string : strip, fromStringz, toStringz, lastIndexOf;
+public import std.typecons : tuple;
+
+extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);
+
+// No ouput, only warnings from llama layer
+extern(C) void silent_log(ggml_log_level level, const char* text, void* user_data) {
+  if(level == GGML_LOG_LEVEL_ERROR)
+    writef("%s", fromStringz(text));
+}
+
+// Setup console so windows can 'handle emoji'
+void setupConsole(){
+  version(Windows) { SetConsoleOutputCP(65001); }
+  llama_log_set(&silent_log, null);
+  mtmd_helper_log_set(&silent_log, null);
+}
 
 // Check if not null, if it is exit()
-T checkNotNull(T)(T ptr, string msg) {
-  if (!ptr) { writefln("[ERROR] %s", msg); exit(1); }
-  return ptr;
-}
+T check(T)(T ptr, string msg) { if (!ptr) { writefln("[ERROR] %s", msg); exit(1); } return ptr; }
 
 // nTokens across all chunks
 int nTokens(mtmd_input_chunks* chunks) {
@@ -21,11 +44,4 @@ int nTokens(mtmd_input_chunks* chunks) {
     total += mtmd_input_chunk_get_n_pos(mtmd_input_chunks_get(chunks, i));
   }
   return total;
-}
-
-// Check if the we can fit n tokens in the context starting at cPos
-bool fitsInContext(llama_context* ctx, llama_pos cPos, int n) {
-  if (cPos + n <= ctx.llama_n_ctx()) return true;
-  writefln("[WARN] Would exceed context (%d + %d > %d)", cPos, n, ctx.llama_n_ctx());
-  return false;
 }

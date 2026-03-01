@@ -4,78 +4,86 @@
  */
 
 import includes;
+import utils;
 
-import std.string : toStringz;
-
-import utils : checkNotNull;
-
-struct LlamaBase {
+struct LlamaModel {
   llama_model* model = null;
   llama_context* ctx = null;
   llama_vocab* vocab = null;
-  alias ctx this;
-}
-
-struct LlamaModel {
-  LlamaBase base;
   llama_sampler* sampler = null;
   mtmd_context* vision = null;
-  alias base this;
+  alias model this;
 }
 
-enum M { agent = 0, summary = 1, embed = 2 }
-
-immutable string[][] MODEL_PATHS = [
-  M.agent:   ["../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf", "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf"],
-  M.summary: ["../LLMs/Qwen3-0.6B.Q4_K_M.gguf"],
-  M.embed:   ["../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf"],
-];
-
-enum int nModels = __traits(allMembers, M).length;
-
-void free(ref LlamaModel m) {
-  if (m.vision) { mtmd_free(m.vision); m.vision = null; }
-  if (m.sampler) { llama_sampler_free(m.sampler);  m.sampler = null; }
-  if (m.ctx) { llama_free(m.ctx); m.ctx = null; }
-  if (m.model) { llama_model_free(m.model); m.model = null; }
+void free(ref LlamaModel model) {
+  if (model.vision) { mtmd_free(model.vision); model.vision = null; }
+  if (model.sampler) { llama_sampler_free(model.sampler);  model.sampler = null; }
+  if (model.ctx) { llama_free(model.ctx); model.ctx = null; }
+  if (model.model) { llama_model_free(model.model); model.model = null; }
 }
 
-// Create context
-llama_context_params createCtxParams(llama_model* model, size_t n_ctx = 4096, 
-                                     size_t n_batch = 1024, size_t n_ubatch = 1024, 
-                                     size_t n_threads = 8, bool embeddings = false) {
-  llama_context_params ctx_params = llama_context_default_params();
-  ctx_params.n_ctx = cast(uint)n_ctx;
-  ctx_params.n_batch = cast(uint)n_batch;
-  ctx_params.n_ubatch = cast(uint)n_ubatch;
-  ctx_params.n_threads = cast(uint)n_threads;
-  ctx_params.embeddings = embeddings;
-  if (embeddings) ctx_params.pooling_type = LLAMA_POOLING_TYPE_MEAN;
-  ctx_params.type_k = GGML_TYPE_Q8_0;
-  ctx_params.type_v = GGML_TYPE_Q8_0;
-  ctx_params.offload_kqv = true;
-  ctx_params.no_perf = true;
-  ctx_params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
-  return(ctx_params);
+llama_model_params mp() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers = -1; return(mp); }
+llama_context_params cp(){ 
+  llama_context_params cp = llama_context_default_params();
+  cp.n_ctx = 2 * 8192; cp.n_batch = 512; cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0;
+  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = true; cp.no_perf = true;
+  return(cp);
 }
 
-// Load a LMM
-LlamaModel loadModel(immutable(string[]) paths, size_t n_ctx = 4096, 
-                     size_t n_batch = 1024, size_t n_ubatch = 1024, 
-                     size_t n_threads = 8, bool embeddings = false) {
-  LlamaModel m;
-  llama_model_params model_params = llama_model_default_params();
-  model_params.n_gpu_layers = -1;
-  m.model = llama_model_load_from_file(toStringz(paths[0]), model_params).checkNotNull("Failed to load model");
-  m.vocab = llama_model_get_vocab(m.model);
-  llama_context_params p = m.model.createCtxParams(n_ctx, n_batch, n_ubatch, n_threads, embeddings);
-  m.ctx = llama_init_from_model(m.model, p).checkNotNull("Failed to create context");
-  if (paths.length > 1) {
-    mtmd_context_params mparams = mtmd_context_params_default();
-    mparams.use_gpu   = true;
-    mparams.n_threads = 4;
-    m.vision = mtmd_init_from_file(toStringz(paths[1]), m.model, mparams).checkNotNull("Failed to load vision model");
+llama_context_params cpe(){ 
+  llama_context_params cp = llama_context_default_params();
+  cp.embeddings = true; cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
+  cp.n_ctx = 256; cp.n_batch = 256; cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0;
+  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = true; cp.no_perf = true;
+  return(cp);
+}
+
+bool isThinking(LlamaModel model) { return(model.tokenize("<think>", false)[0] != LLAMA_TOKEN_NULL); }
+
+// Tokenize a string prompt into tokens
+llama_token[] tokenize(LlamaModel model, string txt, bool add = true, bool parse = true) {
+  llama_token[] tokens;
+  tokens.length = (-llama_tokenize(model.vocab, txt.ptr, cast(int)txt.length, null, 0, add, parse));
+  llama_tokenize(model.vocab, txt.ptr, cast(int)txt.length, tokens.ptr, cast(int)(tokens.length), add, parse);
+  return(tokens);
+}
+
+// De-tokenize a list of tokens tokens into a string
+string detokenize(LlamaModel model, llama_token[] tokens) {
+  auto txt = appender!string;
+  char[256] buf = 0;
+  for (size_t i = 0; i < tokens.length; i++) {
+    int n = llama_token_to_piece(model.vocab, tokens[i], buf.ptr, buf.sizeof, 0, true);
+    if (n > 0) { txt ~= cast(string)buf[0..n]; }
   }
-  return m;
+  return(txt.data);
 }
 
+// Clean a text string by removing thinking
+string clean(string txt) { 
+  auto x = txt.lastIndexOf("</think>\n"); return(strip(x >= 0?txt[x + "</think>\n".length .. $]: txt)); 
+}
+
+// Try to find the start token of a model
+llama_token startToken(LlamaModel model) {
+  llama_token[] im_start_tokens = model.tokenize("<|im_start|>", false, true);
+  return((im_start_tokens.length == 1) ? im_start_tokens[0] : LLAMA_TOKEN_NULL);
+}
+
+// Load a model
+LlamaModel load(const(char)*[] paths,
+                llama_model_params mp = llama_model_default_params(),
+                llama_context_params cp = llama_context_default_params(),
+                llama_sampler_chain_params sp = llama_sampler_chain_default_params(),
+                mtmd_context_params mcp = mtmd_context_params_default()) {
+  LlamaModel model = {
+    model: check(llama_model_load_from_file(paths[0], mp), "Failed to load model")
+  };
+  model.ctx = check(llama_init_from_model(model, cp), "Failed to create context");
+  model.vocab = check(llama_model_get_vocab(model), "Failed to get vocabulary");
+  model.sampler = check(llama_sampler_chain_init(sp), "Failed to initialize sampler");
+  if (paths.length > 1) {
+    model.vision = check(mtmd_init_from_file(paths[1], model, mcp), "Failed to load vision model");
+  }
+  return(model);
+}

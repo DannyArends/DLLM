@@ -14,15 +14,15 @@ import std.stdio : writefln;
 import std.string : strip, fromStringz;
 import std.uri : encodeComponent;
 
-import agent : agent, embedModel;
+import agent : agent;
 import files : getTempPath;
 import rag : ingest;
 import tools : Tool, RegisterTools;
-import vocab : tokenize;
+import model : tokenize;
 
 mixin RegisterTools;
 
-string ingestWWWFmt = "Web '%s' (%d tokens), ingested into RAG.";
+string ingestFmt = "Web '%s' (%d characters, %d tokens), ingested as %d chunks into RAG";
 
 @Tool("Fetch the contents of an URL.")
 string webFetch(string url) {
@@ -50,13 +50,8 @@ string webFetch(string url) {
     // Collapse whitespace
     content = replaceAll(content, regex(r"\s+"), " ");
     content = content.strip();
-    auto tokens = embedModel.tokenize(content, false);
-    string ret = ingestWWWFmt.format(url, tokens.length);
-    if (tokens.length > embedModel.tokenize(ret, false).length) {
-      embedModel.ingest(content);
-      return(ret);
-    }
-    return(content);
+    auto nChunk = agent.rag.ingest(content);
+    return(ingestFmt.format(url, content.length, nChunk[0], nChunk[1]));
   } catch (Exception e) { return "Error: " ~ fromStringz(e.msg); }
 }
 

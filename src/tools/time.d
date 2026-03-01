@@ -11,28 +11,28 @@ import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 
-@Tool("Returns the current date and time in ISO 8601 format (YYYY-MM-DD HH:MM:SS)")
+@Tool("The current date and time in ISO 8601 format (YYYY-MM-DD HH:MM:SS)")
 string currentTime() {
   try {
     return Clock.currTime().toISOExtString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Returns the current Unix timestamp (seconds since 1970-01-01)")
+@Tool("The current Unix timestamp")
 string currentTimestamp() {
   try {
     return to!string(Clock.currTime().toUnixTime());
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Returns the current date in YYYY-MM-DD format")
+@Tool("The current date in YYYY-MM-DD format")
 string currentDate() {
   try {
     return Clock.currTime().toISOExtString()[0..10];
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Returns the day of the week for today (Monday, Tuesday, etc.)")
+@Tool("Todays day of the week (mon, tue, wed, etc.)")
 string currentDayOfWeek() {
   try {
     auto now = Clock.currTime();
@@ -40,7 +40,7 @@ string currentDayOfWeek() {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Returns the day of the week for any date (YYYY-MM-DD) (Monday, Tuesday, etc.)")
+@Tool("The day of the week for any date (YYYY-MM-DD) (mon, tue, wed, etc.)")
 string dayOfWeek(string date) {
   try {
     auto dt = Date.fromISOExtString(date);
@@ -48,7 +48,7 @@ string dayOfWeek(string date) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Add or subtract days from any date (YYYY-MM-DD). Use positive number to add, negative to subtract. Returns date in YYYY-MM-DD format.")
+@Tool("Add or subtract days from any date (YYYY-MM-DD). A positive number adds, A negative subtracts. Returns the date in YYYY-MM-DD format.")
 string addDays(string date, string days) {
   try {
     int numDays = to!int(days);
