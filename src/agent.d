@@ -15,6 +15,7 @@ struct Agent {
   const(char)* chat;
   llama_chat_message[] history;
   mtmd_bitmap*[] bitmaps;
+  string[] tmp;
   llama_pos kvPos = 0;
   llama_pos promptPos = 0;
   RAG rag;
@@ -24,6 +25,8 @@ struct Agent {
 }
 
 __gshared Agent agent = Agent(); /// Global agent (Should only be used by tools)
+
+void free(ref Agent agent) { foreach(file; agent.tmp) { if(file.exists()){ file.remove(); } } }
 
 // Generate a full prompt addition
 string prompt(ref Agent agent, bool addAssistant = true) {

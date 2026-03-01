@@ -11,7 +11,7 @@ public import core.stdc.stdio : fflush;
 public import std.algorithm : min, sort, map, sum, count;
 public import std.array : appender, array, replace;
 public import std.format : format;
-public import std.file : readText;
+public import std.file : exists, readText, remove;
 public import std.json : JSONValue;
 public import std.math : sqrt;
 public import std.range : take, zip;

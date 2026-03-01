@@ -93,7 +93,9 @@ string listDirectory(string path) {
 
 @Tool("Returns a unique temporary file path with the given extension")
 string getTempPath(string extension = "txt"){
-  return(buildNormalizedPath(format("%sagent_%08x.%s", tempDir(), uniform!uint(), extension)));
+  string path = buildNormalizedPath(format("%sagent_%08x.%s", tempDir(), uniform!uint(), extension));
+  agent.tmp ~= path;
+  return(path);
 }
 
 @Tool("Write content to a temporary file located at path. Returns a json containing the file path and file size in bytes.")
