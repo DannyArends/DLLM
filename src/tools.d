@@ -7,8 +7,7 @@ import std.array : appender;
 import std.format : format;
 import std.json : JSONValue, parseJSON;
 import std.regex : regex, matchAll;
-import std.stdio : writefln, writef, writeln, write;
-import std.string : lastIndexOf;
+import std.stdio : writefln;
 
 // UDA for marking tool functions
 struct Tool {
@@ -125,10 +124,7 @@ string toolsToJSON() {
     JSONValue toolJson = JSONValue([
       "name": JSONValue(tool.name),
       "description": JSONValue(tool.description),
-      "parameters": JSONValue([
-        "type": JSONValue("object"),
-        "properties": properties
-      ])
+      "parameters": JSONValue(["type": JSONValue("object"),"properties": properties])
     ]);
     result ~= toolJson.toString();
   }

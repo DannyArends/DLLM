@@ -7,11 +7,11 @@ import includes;
 import utils;
 
 struct LlamaModel {
-  llama_model* model = null;
-  llama_context* ctx = null;
-  llama_vocab* vocab = null;
-  llama_sampler* sampler = null;
-  mtmd_context* vision = null;
+  llama_model* model = null;      /// Model pointer
+  llama_context* ctx = null;      /// Context pointer
+  llama_vocab* vocab = null;      /// Vocabulary pointer
+  llama_sampler* sampler = null;  /// Sampler pointer
+  mtmd_context* vision = null;    /// Vision context pointer
   alias model this;
 }
 
@@ -23,18 +23,18 @@ void free(ref LlamaModel model) {
 }
 
 llama_model_params mp() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers = -1; return(mp); }
-llama_context_params cp() {
+llama_context_params cp(uint32_t n_ctx = 16384 / 2, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q4_0) {
   llama_context_params cp = llama_context_default_params();
-  cp.n_ctx = 2 * 8192; cp.n_batch = 512; cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0;
+  cp.n_ctx = n_ctx; cp.n_batch = n_batch; cp.n_ubatch = n_batch; 
+  cp.n_threads = 8; cp.n_threads_batch = 8;
+  cp.type_k = type; cp.type_v = type;
   cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = true; cp.no_perf = true;
   return(cp);
 }
 
-llama_context_params cpe() {
-  llama_context_params cp = llama_context_default_params();
+llama_context_params cpe(uint32_t n_ctx = 512, uint32_t n_batch = 512) {
+  llama_context_params cp = cp(n_ctx, n_batch, GGML_TYPE_Q8_0);
   cp.embeddings = true; cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
-  cp.n_ctx = 256; cp.n_batch = 256; cp.type_k = GGML_TYPE_Q8_0; cp.type_v = GGML_TYPE_Q8_0;
-  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = true; cp.no_perf = true;
   return(cp);
 }
 

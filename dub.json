@@ -19,23 +19,24 @@
 			"./deps/llama.cpp/build/ggml/src/libggml-base.a",
 			"./deps/llama.cpp/build/ggml/src/libggml-cpu.a",
 			"./deps/llama.cpp/build/ggml/src/ggml-cuda/libggml-cuda.a",
-			"./deps/llama.cpp/build/tools/mtmd/libmtmd.a"
-		],
+			"./deps/llama.cpp/build/tools/mtmd/libmtmd.a"],
 		"lflags-linux": [
 				"-L/usr/local/cuda/lib64", 
 				"-L-static-libstdc++", "-L-static-libgcc", "-L-static", "-l:libgomp.a",
 				"-L-dynamic", "-lpthread", "-ldl"],
 		"libs-linux": ["stdc++", "cuda", "cudart", "cublas", "culibos"],
 		"libs-windows-x86_64": ["llama", "mtmd", "ggml", "ggml-base", "ggml-cpu"],
-		"lflags-windows-x86_64": ["/LIBPATH:./deps/llama.cpp/build/src/Debug", "/LIBPATH:./deps/llama.cpp/build/tools/mtmd/Debug", "/LIBPATH:./deps/llama.cpp/build/ggml/src/Debug"],
+		"lflags-windows-x86_64": [
+			"/LIBPATH:./deps/llama.cpp/build/src/Release",
+			"/LIBPATH:./deps/llama.cpp/build/tools/mtmd/Release",
+			"/LIBPATH:./deps/llama.cpp/build/ggml/src/Release"],
 		"copyFiles-windows-x86_64": [
-			"./deps/llama.cpp/build/bin/Debug/llama.dll",
-			"./deps/llama.cpp/build/bin/Debug/ggml.dll",
-			"./deps/llama.cpp/build/bin/Debug/ggml-base.dll",
-			"./deps/llama.cpp/build/bin/Debug/ggml-cpu.dll",
-			"./deps/llama.cpp/build/bin/Debug/ggml-cuda.dll",
-			"./deps/llama.cpp/build/bin/Debug/mtmd.dll",
-		]
+			"./deps/llama.cpp/build/bin/Release/llama.dll",
+			"./deps/llama.cpp/build/bin/Release/ggml.dll",
+			"./deps/llama.cpp/build/bin/Release/ggml-base.dll",
+			"./deps/llama.cpp/build/bin/Release/ggml-cpu.dll",
+			"./deps/llama.cpp/build/bin/Release/ggml-cuda.dll",
+			"./deps/llama.cpp/build/bin/Release/mtmd.dll"]
 	}]
 }
 

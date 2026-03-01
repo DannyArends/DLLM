@@ -17,6 +17,7 @@ public import std.math : sqrt;
 public import std.range : take, zip;
 public import std.stdio : readln, write, writeln, writef, writefln;
 public import std.string : strip, fromStringz, toStringz, lastIndexOf;
+public import core.time : MonoTime;
 public import std.typecons : tuple;
 
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);

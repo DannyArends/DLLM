@@ -11,16 +11,16 @@ import tools : ToolCall, executeTool;
 import rag : RAG;
 
 struct Agent {
-  LlamaModel model;
-  const(char)* chat;
-  llama_chat_message[] history;
-  mtmd_bitmap*[] bitmaps;
-  string[] tmp;
-  llama_pos kvPos = 0;
-  llama_pos promptPos = 0;
-  RAG rag;
-  bool running = true;
-  bool verbose = false;
+  LlamaModel model;               /// LlamaModel used for the Agent
+  const(char)* chat;              /// Chat template
+  llama_chat_message[] history;   /// Message history
+  mtmd_bitmap*[] bitmaps;         /// Bitmaps loaded for the current process()
+  string[] tmp;                   /// List of tmp files to be cleaned on exit
+  llama_pos kvPos = 0;            /// Current Key-Value cache position (in tokens)
+  llama_pos promptPos = 0;        /// Current Prompt position (in character)
+  RAG rag;                        /// Retrieval-Augmented Generation
+  bool running = true;            /// Is the agent running (false = OneShot)
+  bool verbose = false;           /// verbose output
   alias model this;
 }
 
@@ -96,6 +96,8 @@ llama_token[] generate(ref Agent agent, bool verbose = true) {
   char[256] buf = 0;
   size_t i = 0;
 
+  auto t0 = MonoTime.currTime;
+
   for (i = 0; i < (llama_n_ctx(agent.ctx) - agent.kvPos); i++) {
     auto token = llama_sampler_sample(agent.sampler, agent.ctx, -1);
     if (llama_vocab_is_eog(agent.vocab, token)){ break; }
@@ -104,7 +106,7 @@ llama_token[] generate(ref Agent agent, bool verbose = true) {
 
     if (verbose) {
       int n = llama_token_to_piece(agent.vocab, token, buf.ptr, buf.sizeof, 0, true);
-      if (n > 0) { write(cast(string)buf[0..n]); stdout.fflush(); }
+      if (n > 0) { write(cast(string)buf[0..n]); if(i % 20 == 0){ stdout.fflush(); } }
     }
 
     batch.token[0] = token;  batch.pos[0] = agent.kvPos + cast(int)i;
@@ -112,7 +114,11 @@ llama_token[] generate(ref Agent agent, bool verbose = true) {
     batch.n_seq_id[0] = 1;   batch.seq_id[0][0] = 0;
     if (llama_decode(agent.ctx, batch) != 0) break;
   }
-  if (verbose) { write('\n'); stdout.fflush(); }
+  if (verbose) {
+    auto elapsed = (MonoTime.currTime - t0).total!"msecs";
+    writefln("\n[%.1f tok/s]", i * 1000.0 / elapsed);
+    stdout.fflush();
+  }
   agent.kvPos += i;
   return(response);
 }

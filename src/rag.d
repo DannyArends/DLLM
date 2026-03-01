@@ -9,13 +9,13 @@ import utils;
 import model : detokenize, LlamaModel, tokenize;
 
 struct Chunk {
-  string text;
-  float[] embedding;
+  string text;          /// Text
+  float[] embedding;    /// Text Embedding
 }
 
 struct RAG {
-  LlamaModel model;
-  Chunk[] index = [];
+  LlamaModel model;     /// Model pointer
+  Chunk[] index = [];   /// Chunk index
   alias model this;
 }
 
@@ -28,12 +28,13 @@ float[] embed(RAG rag, llama_token[] tokens) {
   return(e[0..llama_model_n_embd(rag)].dup);
 }
 
-// Ingest a document into the RAG
-size_t[2] ingest(ref RAG rag, string txt, size_t batchsize = 256) {
+// Ingest a document into the RAG using batchsize batches, shifted by 1/2 batchsize
+size_t[2] ingest(ref RAG rag, string txt) {
+  auto n_batch = llama_n_batch(rag.ctx);
   llama_token[] all = rag.tokenize(txt, false);
   size_t nChunk = 0;
-  for (size_t i = 0; i < all.length; i += batchsize / 2) {
-    auto tokens = all[i .. min(i + batchsize, all.length)];
+  for (size_t i = 0; i < all.length; i += n_batch / 2) {
+    auto tokens = all[i .. min(i + n_batch, all.length)];
     rag.index ~= Chunk(rag.detokenize(tokens), rag.embed(tokens));
     nChunk++;
   }
