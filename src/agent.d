@@ -6,9 +6,10 @@
 import includes;
 import utils;
 
-import model : clean, detokenize, LlamaModel, startToken, tokenize;
-import tools : ToolCall, executeTool;
+import model : clean, detokenize, LlamaModel, tokenOf, tokenize;
 import rag : RAG;
+import summary : Summary;
+import tools : ToolCall, executeTool;
 
 struct Agent {
   LlamaModel model;               /// LlamaModel used for the Agent
@@ -18,7 +19,8 @@ struct Agent {
   string[] tmp;                   /// List of tmp files to be cleaned on exit
   llama_pos kvPos = 0;            /// Current Key-Value cache position (in tokens)
   llama_pos promptPos = 0;        /// Current Prompt position (in character)
-  RAG rag;                        /// Retrieval-Augmented Generation
+  RAG rag;                        /// Retrieval-Augmented Generation model
+  Summary summary;                /// Summary model
   bool running = true;            /// Is the agent running (false = OneShot)
   bool verbose = false;           /// verbose output
   alias model this;
@@ -37,8 +39,8 @@ string prompt(ref Agent agent, bool addAssistant = true) {
   llama_chat_apply_template(agent.chat, agent.history.ptr, agent.history.length, addAssistant, buf.ptr, n);
   string prompt = buf.idup;
   if(agent.verbose) writefln("===\n%s===", prompt);
-//  prompt = format("%s\n%s", prompt[agent.promptPos .. n], "<think>\nBudget: 512 tokens. Be concise.\n");
   prompt = format("%s", prompt[agent.promptPos .. n]);
+  if(addAssistant) prompt ~= "<think>\nBudget: 1024 tokens. Be concise.\n";
   agent.promptPos = n0;
   return(prompt);
 }
@@ -86,11 +88,11 @@ string execute(ref Agent agent, const ToolCall[] calls) {
 }
 
 // Generate a reponse
-llama_token[] generate(ref Agent agent, bool verbose = true) {
+llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
   llama_batch batch = llama_batch_init(llama_n_batch(agent.ctx), 0, 1);
   scope(exit) llama_batch_free(batch);
 
-  llama_token im_start = agent.startToken();
+  llama_token im_start = agent.tokenOf("<|im_start|>");
 
   llama_token[] response;
   char[256] buf = 0;
@@ -115,9 +117,8 @@ llama_token[] generate(ref Agent agent, bool verbose = true) {
     if (llama_decode(agent.ctx, batch) != 0) break;
   }
   if (verbose) {
-    auto elapsed = (MonoTime.currTime - t0).total!"msecs";
-    writefln("\n[%.1f tok/s]", i * 1000.0 / elapsed);
-    stdout.fflush();
+    if (time) { writef("\n===[%.1f tok/s]", i * 1000.0 / (MonoTime.currTime - t0).total!"msecs"); }
+    write("\n"); stdout.fflush();
   }
   agent.kvPos += i;
   return(response);

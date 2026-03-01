@@ -9,13 +9,13 @@ import utils;
 import model : detokenize, LlamaModel, tokenize;
 
 struct Chunk {
-  string text;          /// Text
-  float[] embedding;    /// Text Embedding
+  string text;                    /// Text
+  float[] embedding;              /// Text Embedding
 }
 
 struct RAG {
-  LlamaModel model;     /// Model pointer
-  Chunk[] index = [];   /// Chunk index
+  LlamaModel model;               /// Model pointer
+  Chunk[] index = [];             /// Chunk index
   alias model this;
 }
 

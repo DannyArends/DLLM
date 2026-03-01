@@ -15,6 +15,7 @@ struct LlamaModel {
   alias model this;
 }
 
+// Free LlamaModel resources
 void free(ref LlamaModel model) {
   if (model.vision) { mtmd_free(model.vision); model.vision = null; }
   if (model.sampler) { llama_sampler_free(model.sampler);  model.sampler = null; }
@@ -22,8 +23,12 @@ void free(ref LlamaModel model) {
   if (model.model) { llama_model_free(model.model); model.model = null; }
 }
 
-llama_model_params mp() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers = -1; return(mp); }
-llama_context_params cp(uint32_t n_ctx = 16384 / 2, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q4_0) {
+// Cpu or Gpu model ?
+llama_model_params mCpu() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers =  0; return(mp); }
+llama_model_params mGpu() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers = -1; return(mp); }
+
+// Model context paramters
+llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q8_0) {
   llama_context_params cp = llama_context_default_params();
   cp.n_ctx = n_ctx; cp.n_batch = n_batch; cp.n_ubatch = n_batch; 
   cp.n_threads = 8; cp.n_threads_batch = 8;
@@ -32,12 +37,14 @@ llama_context_params cp(uint32_t n_ctx = 16384 / 2, uint32_t n_batch = 512, ggml
   return(cp);
 }
 
-llama_context_params cpe(uint32_t n_ctx = 512, uint32_t n_batch = 512) {
-  llama_context_params cp = cp(n_ctx, n_batch, GGML_TYPE_Q8_0);
+// Model embeddings parameters
+llama_context_params embedding(uint32_t n_batch = 512) {
+  llama_context_params cp = context(n_batch, n_batch, GGML_TYPE_Q8_0);
   cp.embeddings = true; cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
   return(cp);
 }
 
+// Does the model think ?
 bool isThinking(LlamaModel model) { return(model.tokenize("<think>", false)[0] != LLAMA_TOKEN_NULL); }
 
 // Tokenize a string prompt into tokens
@@ -65,8 +72,8 @@ string clean(string txt) {
 }
 
 // Try to find the start token of a model
-llama_token startToken(LlamaModel model) {
-  llama_token[] im_start_tokens = model.tokenize("<|im_start|>", false, true);
+llama_token tokenOf(LlamaModel model, string token = "<|im_start|>") {
+  llama_token[] im_start_tokens = model.tokenize(token, false, true);
   return((im_start_tokens.length == 1) ? im_start_tokens[0] : LLAMA_TOKEN_NULL);
 }
 
