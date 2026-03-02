@@ -31,6 +31,8 @@ int main(string[] args) {
   auto model = load(["../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf", 
                      "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf"], mGpu(), context());
   scope (exit) { model.free(); }
+  llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
+  llama_sampler_chain_add(model.sampler, llama_sampler_init_temp(0.7f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // Agent structure and RAG
