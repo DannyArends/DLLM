@@ -10,7 +10,7 @@ Compile for MS Windows 11:
   mkdir build
   cd build
   cmake -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="120" -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_OPENSSL=OFF -DGGML_CUDA_FA_ALL_QUANTS=ON -DGGML_NATIVE=ON ../
-  msbuild llama.cpp.sln
+  cmake --build . --config Release -j10
 ```
 
 Compile for Linux:
@@ -18,8 +18,8 @@ Compile for Linux:
   cd deps/llama.cpp
   mkdir build
   cd build
-  cmake -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_OPENSSL=OFF  -DGGML_CUDA_FA_ALL_QUANTS=ON -DGGML_NATIVE=ON -DBUILD_SHARED_LIBS=OFF ../
-  make -j8
+  cmake -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="75" -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_OPENSSL=OFF  -DGGML_CUDA_FA_ALL_QUANTS=ON -DGGML_NATIVE=ON -DBUILD_SHARED_LIBS=OFF ../
+  cmake --build . --config Release -j10
 ```
 
 ### Build with 🛠️
