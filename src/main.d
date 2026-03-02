@@ -40,7 +40,7 @@ int main(string[] args) {
 
   // Add the system prompt with tools
   agent.history ~= llama_chat_message(toStringz("system"), 
-                                      toStringz(format(readText("templates/agent.txt"), currentDate(), toolsToJSON())));
+                                      toStringz(format(readText("templates/agent.txt"), currentDate(), toolsToJSON(), readText("data/memory.txt"))));
   agent.process(agent.prompt(false));
 
   // Oneshot or interactive mode ?

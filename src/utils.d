@@ -20,6 +20,8 @@ public import std.string : strip, fromStringz, toStringz, lastIndexOf;
 public import core.time : MonoTime;
 public import std.typecons : tuple;
 
+llama_token LLAMA_TOKEN_NULL = -1;
+
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);
 
 // No ouput, only warnings from llama layer
