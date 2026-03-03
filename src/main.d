@@ -6,7 +6,7 @@
 import includes;
 import utils;
 
-import agent : Agent, agent, execute, prompt, process, generate, clean, free;
+import agent : Agent, agent, execute, prompt, process, generate, clean, clear, free;
 import rag : RAG;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
@@ -20,7 +20,7 @@ int main(string[] args) {
   setupConsole();
 
   // CPU: Summary model
-  auto summary = load(["../LLMs/Qwen3-0.6B.Q4_K_M.gguf"], mCpu(), context(32768));
+  auto summary = load(["../LLMs/Qwen3.5-0.8B-Q4_K_M.gguf"], mCpu(), context(32768));
   scope (exit) { summary.free(); }
 
   // CPU: Embedding RAG model
@@ -28,8 +28,8 @@ int main(string[] args) {
   scope (exit) { embed.free(); }
 
   // GPU: Agentic thinking model & sampler chain (4096 / 8192 / 16384 [X] / 32768)
-  auto model = load(["../LLMs/Qwen3-VL-4B-Thinking.Q4_K_M.gguf", 
-                     "../LLMs/Qwen3-VL-4B-Thinking.mmproj-Q8_0.gguf"], mGpu(), context());
+  auto model = load(["../LLMs/Qwen3.5-4B-Q4_K_M.gguf", 
+                     "../LLMs/mmproj-F16.gguf"], mGpu(), context());
   scope (exit) { model.free(); }
   llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_temp(0.7f));
@@ -56,6 +56,7 @@ int main(string[] args) {
     agent.history ~= llama_chat_message(toStringz("user"), toStringz(user));
 
     do { // Agent tool calling loop
+      agent.clear();
       agent.process(agent.prompt(), false);
       auto tokens = agent.generate();
       auto response = agent.clean(tokens);

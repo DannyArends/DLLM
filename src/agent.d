@@ -18,7 +18,6 @@ struct Agent {
   mtmd_bitmap*[] bitmaps;         /// Bitmaps loaded for the current process()
   string[] tmp;                   /// List of tmp files to be cleaned on exit
   llama_pos kvPos = 0;            /// Current Key-Value cache position (in tokens)
-  llama_pos promptPos = 0;        /// Current Prompt position (in character)
   RAG rag;                        /// Retrieval-Augmented Generation model
   Summary summary;                /// Summary model
   bool running = true;            /// Is the agent running (false = OneShot)
@@ -39,9 +38,7 @@ string prompt(ref Agent agent, bool addAssistant = true) {
   llama_chat_apply_template(agent.chat, agent.history.ptr, agent.history.length, addAssistant, buf.ptr, n);
   string prompt = buf.idup;
   if(agent.verbose) writefln("===\n%s===", prompt);
-  prompt = format("%s", prompt[agent.promptPos .. n]);
   if(addAssistant) prompt ~= "<think>\nBudget: 2048 tokens\n";
-  agent.promptPos = n0;
   return(prompt);
 }
 
@@ -64,17 +61,15 @@ bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
   return(r == 0);
 }
 
-// Add non-thinking part of the response to history and clean KV cache by removing all generated output
+// Add non-thinking part of the response to history
 string clean(ref Agent agent, llama_token[] tokens) {
   auto noThink = agent.detokenize(tokens).clean();
   agent.history ~= llama_chat_message(toStringz("assistant"), toStringz(noThink));
-
-  llama_memory_seq_rm(llama_get_memory(agent.ctx), 0, cast(int)(agent.kvPos - tokens.length), agent.kvPos);
-  agent.kvPos =  cast(int)(agent.kvPos - tokens.length);
-  if(agent.verbose) writefln("Removed %d tokens, kvPos: %d", tokens.length, agent.kvPos);
-
   return(noThink);
 }
+
+// Clear the KV-cache
+void clear(ref Agent agent) { llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; }
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {
@@ -111,7 +106,7 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
       if (n > 0) { write(cast(string)buf[0..n]); if(i % 20 == 0){ stdout.fflush(); } }
     }
 
-    batch.token[0] = token;  batch.pos[0] = agent.kvPos + cast(int)i;
+    batch.token[0] = token;  batch.pos[0] = agent.kvPos + cast(int)response.length;
     batch.logits[0] = 1;     batch.n_tokens = 1;
     batch.n_seq_id[0] = 1;   batch.seq_id[0][0] = 0;
     if (llama_decode(agent.ctx, batch) != 0) break;
@@ -120,6 +115,6 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
     if (time) { writef("\n===[%.1f tok/s]", i * 1000.0 / (MonoTime.currTime - t0).total!"msecs"); }
     write("\n"); stdout.fflush();
   }
-  agent.kvPos += i;
+  agent.kvPos += response.length;
   return(response);
 }
