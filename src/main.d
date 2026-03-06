@@ -6,7 +6,7 @@
 import includes;
 import utils;
 
-import agent : Agent, agent, execute, prompt, process, generate, clean, clear, free;
+import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear, free;
 import rag : RAG;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
@@ -19,15 +19,17 @@ int main(string[] args) {
   scope (exit) { llama_backend_free(); }
   setupConsole();
 
-  // CPU: Summary model
-  auto summary = load(["../LLMs/Qwen3.5-0.8B-Q4_K_M.gguf"], mCpu(), context(32768));
+  // CPU: Summary model with low temp sampler
+  auto summary = load(["../LLMs/Qwen3.5-0.8B-Q4_K_M.gguf"], mGpu(), context(32768));
   scope (exit) { summary.free(); }
+  llama_sampler_chain_add(summary.sampler, llama_sampler_init_temp(0.3f));
+  llama_sampler_chain_add(summary.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // CPU: Embedding RAG model
   auto embed = load(["../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf"], mCpu(), embedding(512));
   scope (exit) { embed.free(); }
 
-  // GPU: Agentic thinking model & sampler chain (4096 / 8192 / 16384 [X] / 32768)
+  // GPU: Agentic thinking model & high temp sampler chain (4096 / 8192 / 16384 [X] / 32768)
   auto model = load(["../LLMs/Qwen3.5-4B-Q4_K_M.gguf", 
                      "../LLMs/mmproj-F16.gguf"], mGpu(), context());
   scope (exit) { model.free(); }
@@ -37,7 +39,8 @@ int main(string[] args) {
 
   // Agent structure and RAG
   agent = Agent(model: model, chat : llama_model_chat_template(model, null),
-                rag : RAG(model : embed), summary : Summary(model : summary) );
+                rag : RAG(model : embed), 
+                summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
 
   // Add the system prompt with tools
@@ -54,7 +57,7 @@ int main(string[] args) {
       if (user == "" || user == "exit" || user == "quit") break;
     }
     agent.history ~= llama_chat_message(toStringz("user"), toStringz(user));
-
+    agent.condense();
     do { // Agent tool calling loop
       agent.clear();
       agent.process(agent.prompt(), false);

@@ -8,7 +8,7 @@ import utils;
 
 import model : clean, detokenize, LlamaModel, tokenOf, tokenize;
 import rag : RAG;
-import summary : Summary;
+import summary : Summary, summarize;
 import tools : ToolCall, executeTool;
 
 struct Agent {
@@ -42,6 +42,21 @@ string prompt(ref Agent agent, bool addAssistant = true) {
   return(prompt);
 }
 
+// Condense history when KV pressure exceeds threshold. Returns true if condensed.
+bool condense(ref Agent agent, float threshold = 0.60f, size_t keepTurns = 4) {
+  auto tokens = agent.tokenize(agent.prompt(false), false, false);
+  if (tokens.length < cast(size_t)(llama_n_ctx(agent.ctx) * threshold)) return false;
+
+  writeln("[condense] KV pressure, summarizing history...");
+  auto sysMsg = agent.history[0];
+  auto tail = agent.history.length > keepTurns ? agent.history[$ - keepTurns .. $] : [];
+  auto head = agent.history.length > keepTurns ? agent.history[1 .. $ - keepTurns] : agent.history[1 .. $];
+  auto summary = agent.summary.summarize(head);
+  agent.history = [sysMsg, llama_chat_message(toStringz("assistant"), toStringz(summary))] ~ tail;
+  writefln("[condense] Done. ~%d chars.", summary.length);
+  return true;
+}
+
 // Process text (with optional images) and eval into KV cache, updating kvPos
 bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
   mtmd_input_chunks* chunks = mtmd_input_chunks_init();
@@ -69,7 +84,7 @@ string clean(ref Agent agent, llama_token[] tokens) {
 }
 
 // Clear the KV-cache
-void clear(ref Agent agent) { llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; }
+void clear(T)(ref T agent) { llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; }
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {
