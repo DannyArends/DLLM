@@ -1,4 +1,4 @@
-## DLLM - Compile llama.cpp ✨
+## DLLM - Compile 🦙.cpp dependency ✨
 Clone the repository
   * `git clone --recursive https://github.com/DannyArends/DImGui.git`
   * `git submodule update --init --recursive` (If already cloned)

@@ -20,6 +20,7 @@ struct LlamaModel {
 void free(ref LlamaModel model) {
   if (model.vision) { mtmd_free(model.vision); model.vision = null; }
   if (model.sampler) { llama_sampler_free(model.sampler);  model.sampler = null; }
+  if (model.json) { llama_sampler_free(model.json);  model.json = null; }
   if (model.ctx) { llama_free(model.ctx); model.ctx = null; }
   if (model.model) { llama_model_free(model.model); model.model = null; }
 }
@@ -29,18 +30,18 @@ llama_model_params mCpu() { llama_model_params mp = llama_model_default_params()
 llama_model_params mGpu() { llama_model_params mp = llama_model_default_params(); mp.n_gpu_layers = -1; return(mp); }
 
 // Model context paramters
-llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q8_0) {
+llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q8_0, bool KQVonGpu = true) {
   llama_context_params cp = llama_context_default_params();
   cp.n_ctx = n_ctx; cp.n_batch = n_batch; cp.n_ubatch = n_batch; 
   cp.n_threads = 8; cp.n_threads_batch = 8;
   cp.type_k = type; cp.type_v = type;
-  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = true; cp.no_perf = true;
+  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = KQVonGpu; cp.no_perf = true;
   return(cp);
 }
 
 // Model embeddings parameters
 llama_context_params embedding(uint32_t n_batch = 512) {
-  llama_context_params cp = context(n_batch, n_batch, GGML_TYPE_Q8_0);
+  llama_context_params cp = context(n_batch, n_batch, GGML_TYPE_Q8_0, false);
   cp.embeddings = true; cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
   return(cp);
 }

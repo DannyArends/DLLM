@@ -1,3 +1,6 @@
 .dub/
 bin/
 data/
+out/
+
+*.bin

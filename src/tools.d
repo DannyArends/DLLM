@@ -4,7 +4,7 @@
  */
 
 import std.algorithm : map;
-import std.array : appender, join;
+import std.array : appender, array, join;
 import std.format : format;
 import std.json : JSONValue, parseJSON;
 import std.regex : regex, matchAll;
@@ -92,7 +92,7 @@ ToolCall[] parse(string response) {
   auto pattern = regex(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", "gs");
   foreach(match; matchAll(response, pattern)) {
     try {
-      JSONValue json = parseJSON(match[1]);
+      JSONValue json = parseJSON(match[1].map!(c => c < 0x20 ? ' ' : c).array);
       if ("name" in json && "arguments" in json) { calls ~= ToolCall(json["name"].str, json["arguments"]); }
     } catch (Exception e) {
       writefln("Failed to parse tool call: %s", e.msg);
@@ -104,7 +104,7 @@ ToolCall[] parse(string response) {
 string buildJsonGrammar() {
   auto names = ALL_TOOLS.map!(t => "\"\\\"" ~ t.name ~ "\\\"\"").join(" | ");
   return(`
-root ::= "{" ws "\"name\"" ws ":" ws toolname ws "," ws "\"arguments\"" ws ":" ws object ws "}" ws "</tool_call>"
+root ::= "{" ws "\"name\"" ws ":" ws toolname ws "," ws "\"arguments\"" ws ":" ws object ws "}</tool_call>"
 toolname ::= ` ~ names ~ `
 object ::= "{" ws (string ws ":" ws value (ws "," ws string ws ":" ws value)*)? ws "}"
 array ::= "[" ws (value (ws "," ws value)*)? ws "]"

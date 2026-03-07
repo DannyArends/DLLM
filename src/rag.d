@@ -62,8 +62,8 @@ string[] query(RAG rag, string query, int topK = 3, bool verbose = false) {
 
 // Cosine similarity between vectors a and b
 float cosineSimilarity(float[] a, float[] b) {
-  float denom = sqrt(a.map!(x => x * x).sum) * sqrt(b.map!(x => x * x).sum);
-  return(denom == 0.0f ? 0.0f : zip(a, b).map!(t => t[0] * t[1]).sum / denom);
+  float denom = sqrt(a.map!(x=>x*x).sum) * sqrt(b.map!(x=>x*x).sum);
+  return denom == 0.0f ? 0.0f : dotProduct(a, b) / denom;
 }
 
 // Save the RAG

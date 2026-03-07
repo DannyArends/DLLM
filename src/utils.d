@@ -11,12 +11,14 @@ public import std.algorithm : any, count, endsWith, min, map, sort, sum;
 public import std.array : appender, array, replace, join;
 public import std.digest.md : md5Of, toHexString;
 public import std.format : format;
-public import std.file : exists, readText, remove;
+public import std.file : getcwd, exists, readText, remove;
 public import std.json : JSONValue;
 public import std.math : sqrt;
+public import std.numeric : dotProduct;
+public import std.path : buildNormalizedPath, absolutePath, isAbsolute;
 public import std.range : take, zip;
 public import std.stdio : File, readln, write, writeln, writef, writefln;
-public import std.string : strip, fromStringz, toStringz, lastIndexOf;
+public import std.string : strip, fromStringz, toStringz, lastIndexOf, startsWith;
 public import core.time : MonoTime;
 public import std.typecons : tuple;
 
@@ -25,6 +27,14 @@ static if(!__traits(compiles, LLAMA_TOKEN_NULL)) {
 }
 
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);
+
+immutable string CWD;
+
+shared static this() { CWD = buildNormalizedPath(getcwd()); }
+
+bool isSafePath(string path) {
+  return buildNormalizedPath(path.absolutePath()).startsWith(CWD);
+}
 
 // No ouput, only warnings from llama layer
 extern(C) void silent_log(ggml_log_level level, const char* text, void* user_data) {

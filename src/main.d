@@ -8,6 +8,7 @@ import utils;
 
 import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear, free;
 import rag : RAG, load, save;
+import files : memento;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
 import tools : toolsToJSON, parse, buildJsonGrammar;
@@ -20,18 +21,18 @@ int main(string[] args) {
   setupConsole();
 
   // CPU: Summary model with low temp sampler
-  auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mGpu(), context(32768));
+  auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mCpu(), context(32768, 1024, GGML_TYPE_Q8_0, false));
   scope (exit) { summary.free(); }
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_temp(0.3f));
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // CPU: Embedding RAG model
-  auto embed = load(["../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf"], mCpu(), embedding(512));
+  auto embed = load(["../LLMs/nomic-embed-text-v1.5.Q4_K_M.gguf"], mCpu(), embedding(1024));
   scope (exit) { embed.free(); }
 
   // GPU: Agentic thinking model & high temp sampler chain (4096 / 8192 / 16384 [X] / 32768)
   auto model = load(["../LLMs/Qwen3.5-4B-Q4_K_M.gguf", 
-                     "../LLMs/mmproj-F16.gguf"], mGpu(), context());
+                     "../LLMs/mmproj-Qwen3.5-4B-F16.gguf"], mGpu(), context(32768, 1024, GGML_TYPE_Q8_0, true));
   scope (exit) { model.free(); }
 
   // Conversational sampler
@@ -49,12 +50,16 @@ int main(string[] args) {
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
-  agent.rag.load("data/rag.bin");
-  scope(exit) agent.rag.save("data/rag.bin");
+  agent.rag.load("workspace/rag.bin");
+  scope(exit) agent.rag.save("workspace/rag.bin");
 
   // Add the system prompt with tools
-  agent.history ~= llama_chat_message(toStringz("system"), 
-                                      toStringz(format(readText("templates/agent.txt"), currentDate(), toolsToJSON(), readText("data/memory.txt"))));
+  agent.history ~= llama_chat_message(toStringz("system"),
+                                      toStringz(format(readText("templates/agent.txt"),
+                                      currentDate(),
+                                      toolsToJSON(),
+                                      memento,
+                                      memento.readText())));
   agent.process(agent.prompt(false));
 
   // Oneshot or interactive mode ?

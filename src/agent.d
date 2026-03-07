@@ -24,8 +24,8 @@ struct Agent {
   bool verbose = false;           /// verbose output
   alias model this;
 }
-
-__gshared Agent agent = Agent(); /// Global agent (Should only be used by tools)
+/// Global agent singleton — NOT thread-safe, only for use within tool callbacks
+__gshared Agent agent = Agent();
 
 void free(ref Agent agent) { foreach(file; agent.tmp) { if(file.exists()){ file.remove(); } } }
 
@@ -44,8 +44,7 @@ string prompt(ref Agent agent, bool addAssistant = true) {
 
 // Condense history when KV pressure exceeds threshold. Returns true if condensed.
 bool condense(ref Agent agent, float threshold = 0.60f, size_t keepTurns = 4) {
-  auto tokens = agent.tokenize(agent.prompt(false), false, false);
-  if (tokens.length < cast(size_t)(llama_n_ctx(agent.ctx) * threshold)) return false;
+  if (agent.kvPos < cast(size_t)(llama_n_ctx(agent.ctx) * threshold)) return false;
 
   writeln("[condense] KV pressure, summarizing history...");
   auto sysMsg = agent.history[0];
@@ -88,18 +87,14 @@ string clean(ref Agent agent, llama_token[] tokens) {
 
 // Clear the KV-cache
 void clear(ref Agent agent) { 
-  llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; 
+  llama_memory_clear(llama_get_memory(agent.ctx), true); agent.kvPos = 0; 
 }
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {
-  auto txt = appender!string;
-  foreach(i, call; calls) {
-    string toolResult = executeTool(call.name, call.arguments);
-    auto response = JSONValue(["tool": JSONValue(call.name), "args": JSONValue(call.arguments), "result": JSONValue(toolResult)]);
-    txt ~= response.toString();
-  }
-  return(txt.data);
+  return(calls.map!(call => JSONValue(["tool": JSONValue(call.name), 
+                                       "args": JSONValue(call.arguments), 
+                                       "result": JSONValue(executeTool(call.name, call.arguments))]).toString()).join);
 }
 
 // Generate a reponse
@@ -110,6 +105,7 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
   llama_token im_start = agent.tokenOf("<|im_start|>");
   llama_token[] response;
   string tBuf;
+  enum size_t MAX_TAG = "</tool_call>".length;
   bool inToolCall = false;
   char[256] buf = 0;
   size_t i = 0;
@@ -122,15 +118,16 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
 
     // Break on EOG, continue on null & start tokens
     if (llama_vocab_is_eog(agent.vocab, token)){ break; }
-    if (im_start != LLAMA_TOKEN_NULL && token == im_start){ continue; }
+    if (im_start != LLAMA_TOKEN_NULL && token == im_start){ break; }
 
     // Add the token, detokenize, and print
     response ~= token;
     string strTok = agent.detokenize([token]);
     if (verbose) { write(strTok); if(i % 20 == 0){ stdout.fflush(); } }
 
-    // Check for tool calls
+    // Add string representation of token, and check for tool call
     tBuf ~= strTok;
+    if (tBuf.length > MAX_TAG) tBuf = tBuf[$ - MAX_TAG .. $];
     if (!inToolCall && tBuf.endsWith("<tool_call>")) { inToolCall = true;  tBuf = ""; }
     if (inToolCall && tBuf.endsWith("</tool_call>")) { inToolCall = false; tBuf = ""; llama_sampler_reset(agent.json); }
 

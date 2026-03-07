@@ -3,7 +3,7 @@
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
 
-import std.array : appender;
+import std.array : appender, split;
 import std.conv : to;
 import std.json : JSONValue, parseJSON;
 import std.format : format;
@@ -86,9 +86,10 @@ string webSearch(string query, string max_results) {
 @Tool("Download an image from a URL to a local temporary file, returns the local file path")
 string downloadImage(string url) {
   try {
-    string ext = url.extension;
-    if (ext.length == 0 || ext.length > 5) ext = "png"; // fallback for no/invalid extension
-    string path = getTempPath(ext);
+    auto clean = url.split("?")[0].split("#")[0];  // strip query string and fragment
+    string ext = clean.extension;
+    if (ext.length == 0 || ext.length > 5) ext = ".png";
+    string path = getTempPath(ext[1..$]);
     download(url, path);
     return(path);
   } catch (Exception e) {
