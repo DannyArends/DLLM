@@ -8,11 +8,12 @@ import utils;
 
 import model : detokenize, LlamaModel, tokenize;
 
-const uint RAG_MAGIC = 0xBA610001;
+const uint RAG_MAGIC = 0xBA610002;
 
 struct Chunk {
   string origin;                  /// Chunk origin (unknown, path, url)
   string text;                    /// Text
+  string hash;                    /// Hash of text
   float[] embedding;              /// Text Embedding
 }
 
@@ -32,23 +33,30 @@ float[] embed(RAG rag, llama_token[] tokens) {
 }
 
 // Ingest a document into the RAG using batchsize batches, shifted by 1/2 batchsize
-size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown") {
+size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown", bool verbose = false) {
   auto n_batch = llama_n_batch(rag.ctx);
   llama_token[] all = rag.tokenize(txt, false);
   size_t nChunk = 0;
   for (size_t i = 0; i < all.length; i += n_batch / 2) {
     auto tokens = all[i .. min(i + n_batch, all.length)];
-    rag.index ~= Chunk(origin, rag.detokenize(tokens), rag.embed(tokens));
+    auto text = rag.detokenize(tokens);
+    auto hash = md5Of(text).toHexString().idup;
+    if (rag.index.any!(c => c.hash == hash)) {
+      if (verbose) writefln("skip ingestion of %d tokens with hash: %s", tokens.length, hash);
+      continue;
+    }
+    rag.index ~= Chunk(origin, text, hash, rag.embed(tokens));
     nChunk++;
   }
   return([all.length, nChunk]);
 }
 
 // Query the RAG
-string[] query(RAG rag, string query, int topK = 3) {
+string[] query(RAG rag, string query, int topK = 3, bool verbose = false) {
   float[] qEmbed = rag.embed(rag.tokenize(query, false));
   auto scored = rag.index.map!(c => tuple(c.origin, c.text, cosineSimilarity(qEmbed, c.embedding))).array;
   auto ranked = scored.sort!((a, b) => a[2] > b[2]);
+  if (verbose) { foreach(s; ranked.take(topK)) writefln("[RAG] score: %.4f origin: %s", s[2], s[0]); }
   return ranked.take(topK).map!(t => format("[%s] %s", t[0], t[1])).array;
 }
 
@@ -59,7 +67,7 @@ float cosineSimilarity(float[] a, float[] b) {
 }
 
 // Save the RAG
-void save(ref RAG rag, string path) {
+void save(ref RAG rag, string path, bool verbose = false) {
   auto f = File(path, "wb");
   f.rawWrite((&RAG_MAGIC)[0..1]);
   ulong n = rag.index.length;
@@ -67,12 +75,14 @@ void save(ref RAG rag, string path) {
   foreach (chunk; rag.index) {
     f.writeRAG(chunk.origin);
     f.writeRAG(chunk.text);
+    f.writeRAG(chunk.hash);
     f.writeRAG(chunk.embedding);
   }
+  if (verbose) writefln("[RAG] Saving %d chunks", rag.index.length);
 }
 
 // Load the RAG
-void load(ref RAG rag, string path) {
+void load(ref RAG rag, string path, bool verbose = false) {
   if (!exists(path)) return;
   auto f = File(path, "rb");
   uint magic; f.rawRead((&magic)[0..1]);
@@ -80,6 +90,10 @@ void load(ref RAG rag, string path) {
   ulong n; f.rawRead((&n)[0..1]);
   rag.index.length = 0;
   foreach (_; 0..n) {
-    rag.index ~= Chunk(f.readRAG!char().idup, f.readRAG!char().idup, f.readRAG!float());
+    rag.index ~= Chunk(f.readRAG!char().idup, // chunk.origin
+                       f.readRAG!char().idup, // chunk.text
+                       f.readRAG!char().idup, // chunk.hash
+                       f.readRAG!float());    // chunk.embedding
   }
+  if (verbose) writefln("[RAG] Loaded %d chunks", rag.index.length);
 }

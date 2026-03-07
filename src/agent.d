@@ -72,6 +72,9 @@ bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
   auto r = mtmd_helper_eval_chunks(agent.vision, agent.ctx, chunks, agent.kvPos, 0, llama_n_batch(agent.ctx), true, &agent.kvPos);
   if(agent.verbose) writefln("Number of tokens: %d / %d, kvPos: %d", chunks.nTokens, llama_n_ctx(agent.ctx), agent.kvPos);
 
+  foreach (ref msg; agent.history) {
+    msg.content = toStringz(fromStringz(msg.content).replace("<__media__>", "[media]"));
+  }
   agent.bitmaps = [];
   return(r == 0);
 }
@@ -84,7 +87,9 @@ string clean(ref Agent agent, llama_token[] tokens) {
 }
 
 // Clear the KV-cache
-void clear(T)(ref T agent) { llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; }
+void clear(ref Agent agent) { 
+  llama_memory_clear(llama_get_memory(agent.ctx), true);  agent.kvPos = 0; 
+}
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {

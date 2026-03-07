@@ -20,7 +20,7 @@ int main(string[] args) {
   setupConsole();
 
   // CPU: Summary model with low temp sampler
-  auto summary = load(["../LLMs/Qwen3.5-0.8B-Q4_K_M.gguf"], mGpu(), context(32768));
+  auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mGpu(), context(32768));
   scope (exit) { summary.free(); }
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_temp(0.3f));
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
@@ -40,6 +40,7 @@ int main(string[] args) {
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // JSON sampler
+  llama_sampler_chain_add(model.json, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
   llama_sampler_chain_add(model.json, llama_sampler_init_grammar(model.vocab, buildJsonGrammar().toStringz(), "root"));
   llama_sampler_chain_add(model.json, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 

@@ -12,7 +12,6 @@ import model : clean, LlamaModel, tokenize, detokenize;
 struct Summary {
   LlamaModel model;               /// Model pointer
   const(char)* chat;              /// Chat template for this model
-  llama_pos kvPos = 0;            /// KV cache position
   alias model this;
 }
 
@@ -20,8 +19,8 @@ struct Summary {
 // Uses the summary model's own chat template and context.
 // Clears the summary model KV before and after to avoid state leakage.
 string summarize(ref Summary summary, llama_chat_message[] history) {
-  summary.clear();
-  scope(exit) summary.clear();
+  llama_memory_clear(llama_get_memory(summary.ctx), true);
+  llama_pos pos = 0;
 
   // Flatten history into plain text for the summarization prompt
   auto msgs = appender!string;
@@ -40,12 +39,17 @@ string summarize(ref Summary summary, llama_chat_message[] history) {
   char[] buf = new char[n];
   llama_chat_apply_template(summary.chat, msgHistory.ptr, msgHistory.length, true, buf.ptr, n);
 
-  summary.process(buf.idup, false, false);
-  return summary.detokenize(summary.generate()).clean();
+  auto t0 = MonoTime.currTime;
+  summary.process(pos, buf.idup, false, false);
+  writefln("[summary] process: %.1fs", (MonoTime.currTime - t0).total!"msecs" / 1000.0);
+  auto t1 = MonoTime.currTime;
+  auto tokens = summary.generate(pos);
+  writefln("[summary] generate: %.1fs", (MonoTime.currTime - t1).total!"msecs" / 1000.0);
+  return summary.detokenize(tokens);
 }
 
 // Tokenize and eval text into the summary model KV cache
-bool process(ref Summary summary, string text, bool add = true, bool parse = true) {
+bool process(ref Summary summary, ref llama_pos pos, string text, bool add = true, bool parse = true) {
   auto tokens = summary.tokenize(text, add, parse);
   if (tokens.length == 0) return true;
 
@@ -59,40 +63,40 @@ bool process(ref Summary summary, string text, bool add = true, bool parse = tru
     if (chunk > n_batch) chunk = n_batch;
 
     for (int i = 0; i < chunk; i++) {
-      batch.token[i]      = tokens[offset + i];
-      batch.pos[i]        = summary.kvPos + offset + i;
-      batch.n_seq_id[i]   = 1;
-      batch.seq_id[i][0]  = 0;
-      batch.logits[i]     = (offset + i == cast(int)tokens.length - 1) ? 1 : 0;
+      batch.token[i] = tokens[offset + i];
+      batch.pos[i] = pos + offset + i;
+      batch.n_seq_id[i] = 1;
+      batch.seq_id[i][0] = 0;
+      batch.logits[i] = (offset + i == cast(int)tokens.length - 1) ? 1 : 0;
     }
     batch.n_tokens = chunk;
     if (llama_decode(summary.ctx, batch) != 0) return false;
     offset += chunk;
   }
-  summary.kvPos += cast(llama_pos)tokens.length;
+  pos += cast(llama_pos)tokens.length;
   return true;
 }
 
 // Generate tokens from the summary model
-llama_token[] generate(ref Summary summary) {
+llama_token[] generate(ref Summary summary, ref llama_pos pos, size_t maxTokens = 4096) {
   llama_batch batch = llama_batch_init(1, 0, 1);
   scope(exit) llama_batch_free(batch);
 
   llama_token[] response;
-  for (size_t i = 0; i < (llama_n_ctx(summary.ctx) - summary.kvPos); i++) {
+  for (size_t i = 0; i < maxTokens; i++) {
     auto token = llama_sampler_sample(summary.sampler, summary.ctx, -1);
     if (llama_vocab_is_eog(summary.vocab, token)) break;
     response ~= token;
 
-    batch.token[0]     = token;
-    batch.pos[0]       = summary.kvPos + cast(int)response.length;
-    batch.logits[0]    = 1;
-    batch.n_tokens     = 1;
-    batch.n_seq_id[0]  = 1;
+    batch.token[0] = token;
+    batch.pos[0] = pos + cast(int)response.length - 1;
+    batch.logits[0] = 1;
+    batch.n_tokens = 1;
+    batch.n_seq_id[0] = 1;
     batch.seq_id[0][0] = 0;
     if (llama_decode(summary.ctx, batch) != 0) break;
   }
-  summary.kvPos += cast(llama_pos)response.length;
+  pos += cast(llama_pos)response.length;
   return response;
 }
 

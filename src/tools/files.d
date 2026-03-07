@@ -13,7 +13,7 @@ import std.json : JSONValue;
 import std.file : readText, getSize, exists, isDir, dirEntries, SpanMode, write, tempDir;
 import std.format : format;
 import std.stdio : writefln;
-import std.string : replace, strip, toStringz;
+import std.string : replace, strip, toStringz, splitLines;
 import std.random : uniform;
 
 import agent : agent;
@@ -31,7 +31,27 @@ string queryRAG(string question) {
   return results.length > 0 ? results.join("\n---\n") : "No relevant results found.";
 }
 
-@Tool("Read / Load into RAG the contents of a file located at path.")
+@Tool("Search for a pattern in files at path, returns up to max_results matching lines with file and line number")
+string grepFiles(string path, string pattern, string max_results) {
+  int maxLines = to!int(max_results);
+  auto result = executeShell(format("grep -rn -m %d \"%s\" \"%s\"", maxLines, pattern, path));
+  return result.output.strip().length > 0 ? result.output.strip() : "No matches found";
+}
+
+@Tool("Read lines start_line to end_line (1-based) from a file and return them directly.")
+string readFileSection(string path, string start_line, string end_line) {
+  try {
+    auto lines = readText(path).splitLines();
+    int s = to!int(start_line) - 1;
+    int e = to!int(end_line);
+    if (s < 0) s = 0;
+    if (e > cast(int)lines.length) e = cast(int)lines.length;
+    if (s >= e) return("Error: start_line exceeds file length");
+    return lines[s..e].join("\n");
+  } catch (Exception e) { return format("Error: %s", e.msg); }
+}
+
+@Tool("Read / Load the contents of a file located at path into the RAG.")
 string readFile(string path) {
   auto text = readText(path);
   auto nChunk = agent.rag.ingest(text, path);

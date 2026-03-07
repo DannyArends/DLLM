@@ -7,8 +7,9 @@ import includes;
 
 public import core.stdc.stdlib : exit;
 public import core.stdc.stdio : fflush;
-public import std.algorithm : count, endsWith, min, map, sort, sum;
+public import std.algorithm : any, count, endsWith, min, map, sort, sum;
 public import std.array : appender, array, replace, join;
+public import std.digest.md : md5Of, toHexString;
 public import std.format : format;
 public import std.file : exists, readText, remove;
 public import std.json : JSONValue;
@@ -58,7 +59,6 @@ void writeRAG(T)(ref File f, T[] data) {
 // Read an array from binary
 T[] readRAG(T)(ref File f) {
   ulong len; f.rawRead((&len)[0..1]);
-  if (len > 100_000_000) throw new Exception(format("Corrupt RAG: implausible length %d", len));
-  T[] buf = new T[len]; f.rawRead(buf);
-  return buf;
+  if (len > 100_000_000){ throw new Exception(format("Corrupt RAG: implausible length %d", len)); }
+  T[] buf = new T[len]; f.rawRead(buf); return buf;
 }
