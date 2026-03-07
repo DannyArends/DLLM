@@ -7,9 +7,8 @@ import includes;
 
 public import core.stdc.stdlib : exit;
 public import core.stdc.stdio : fflush;
-
-public import std.algorithm : min, sort, map, sum, count;
-public import std.array : appender, array, replace;
+public import std.algorithm : count, endsWith, min, map, sort, sum;
+public import std.array : appender, array, replace, join;
 public import std.format : format;
 public import std.file : exists, readText, remove;
 public import std.json : JSONValue;
@@ -20,7 +19,9 @@ public import std.string : strip, fromStringz, toStringz, lastIndexOf;
 public import core.time : MonoTime;
 public import std.typecons : tuple;
 
-llama_token LLAMA_TOKEN_NULL = -1;
+static if(!__traits(compiles, LLAMA_TOKEN_NULL)) {
+    llama_token LLAMA_TOKEN_NULL = -1;
+}
 
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);
 

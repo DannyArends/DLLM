@@ -10,7 +10,7 @@ import agent : Agent, agent, condense, execute, prompt, process, generate, clean
 import rag : RAG;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
-import tools : toolsToJSON, parse;
+import tools : toolsToJSON, parse, buildJsonGrammar;
 import time : currentDate;
 
 int main(string[] args) {
@@ -33,9 +33,15 @@ int main(string[] args) {
   auto model = load(["../LLMs/Qwen3.5-4B-Q4_K_M.gguf", 
                      "../LLMs/mmproj-F16.gguf"], mGpu(), context());
   scope (exit) { model.free(); }
+
+  // Conversational sampler
   llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_temp(0.7f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+
+  // JSON sampler
+  llama_sampler_chain_add(model.json, llama_sampler_init_grammar(model.vocab, buildJsonGrammar().toStringz(), "root"));
+  llama_sampler_chain_add(model.json, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // Agent structure and RAG
   agent = Agent(model: model, chat : llama_model_chat_template(model, null),
@@ -53,7 +59,8 @@ int main(string[] args) {
   string user = !agent.running ? args[($-1)] : "";
   do {
     if (agent.running) {
-      writef("=== You [%.1f/%.1fkb]: ", agent.kvPos / 1024f, llama_n_ctx(agent.ctx) / 1024f); stdout.fflush(); user = readln().strip();
+      writef("=== You [%.1f/%.1fkb]: ", agent.kvPos / 1024f, llama_n_ctx(agent.ctx) / 1024f); stdout.fflush();
+      user = readln().strip();
       if (user == "" || user == "exit" || user == "quit") break;
     }
     agent.history ~= llama_chat_message(toStringz("user"), toStringz(user));

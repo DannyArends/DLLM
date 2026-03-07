@@ -103,24 +103,33 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
   scope(exit) llama_batch_free(batch);
 
   llama_token im_start = agent.tokenOf("<|im_start|>");
-
   llama_token[] response;
+  string tBuf;
+  bool inToolCall = false;
   char[256] buf = 0;
   size_t i = 0;
-
   auto t0 = MonoTime.currTime;
 
   for (i = 0; i < (llama_n_ctx(agent.ctx) - agent.kvPos); i++) {
-    auto token = llama_sampler_sample(agent.sampler, agent.ctx, -1);
+    // Figure out the sampler, and sample a token
+    auto sampler = (agent.json && inToolCall)? agent.json : agent.sampler;
+    auto token = llama_sampler_sample(sampler, agent.ctx, -1);
+
+    // Break on EOG, continue on null & start tokens
     if (llama_vocab_is_eog(agent.vocab, token)){ break; }
     if (im_start != LLAMA_TOKEN_NULL && token == im_start){ continue; }
+
+    // Add the token, detokenize, and print
     response ~= token;
+    string strTok = agent.detokenize([token]);
+    if (verbose) { write(strTok); if(i % 20 == 0){ stdout.fflush(); } }
 
-    if (verbose) {
-      int n = llama_token_to_piece(agent.vocab, token, buf.ptr, buf.sizeof, 0, true);
-      if (n > 0) { write(cast(string)buf[0..n]); if(i % 20 == 0){ stdout.fflush(); } }
-    }
+    // Check for tool calls
+    tBuf ~= strTok;
+    if (!inToolCall && tBuf.endsWith("<tool_call>")) { inToolCall = true;  tBuf = ""; }
+    if (inToolCall && tBuf.endsWith("</tool_call>")) { inToolCall = false; tBuf = ""; llama_sampler_reset(agent.json); }
 
+    // Add the generated token to KV cache
     batch.token[0] = token;  batch.pos[0] = agent.kvPos + cast(int)response.length;
     batch.logits[0] = 1;     batch.n_tokens = 1;
     batch.n_seq_id[0] = 1;   batch.seq_id[0][0] = 0;

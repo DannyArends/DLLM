@@ -3,7 +3,8 @@
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
 
-import std.array : appender;
+import std.algorithm : map;
+import std.array : appender, join;
 import std.format : format;
 import std.json : JSONValue, parseJSON;
 import std.regex : regex, matchAll;
@@ -98,6 +99,20 @@ ToolCall[] parse(string response) {
     }
   }
   return(calls);
+}
+
+string buildJsonGrammar() {
+  auto names = ALL_TOOLS.map!(t => "\"\\\"" ~ t.name ~ "\\\"\"").join(" | ");
+  return(`
+root ::= "{" ws "\"name\"" ws ":" ws toolname ws "," ws "\"arguments\"" ws ":" ws object ws "}" ws "</tool_call>"
+toolname ::= ` ~ names ~ `
+object ::= "{" ws (string ws ":" ws value (ws "," ws string ws ":" ws value)*)? ws "}"
+array ::= "[" ws (value (ws "," ws value)*)? ws "]"
+value ::= string | number | object | array | "true" | "false" | "null"
+string ::= "\"" ([^"\\] | "\\" (["\\/bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]))* "\""
+number ::= "-"? ([0-9] | [1-9] [0-9]+) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+ws ::= [ \t\n\r]*
+`);
 }
 
 // Execute tool by name with JSON arguments

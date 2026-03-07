@@ -11,6 +11,7 @@ struct LlamaModel {
   llama_context* ctx = null;      /// Context pointer
   llama_vocab* vocab = null;      /// Vocabulary pointer
   llama_sampler* sampler = null;  /// Sampler pointer
+  llama_sampler* json = null;  /// Sampler pointer
   mtmd_context* vision = null;    /// Vision context pointer
   alias model this;
 }
@@ -82,13 +83,16 @@ LlamaModel load(const(char)*[] paths,
                 llama_model_params mp = llama_model_default_params(),
                 llama_context_params cp = llama_context_default_params(),
                 llama_sampler_chain_params sp = llama_sampler_chain_default_params(),
-                mtmd_context_params mcp = mtmd_context_params_default()) {
+                mtmd_context_params mcp = mtmd_context_params_default(),
+                bool verbose = false) {
+  if (verbose) writefln("Loading: '%s'", paths.map!fromStringz.join("', '"));
   LlamaModel model = {
     model: check(llama_model_load_from_file(paths[0], mp), "Failed to load model")
   };
   model.ctx = check(llama_init_from_model(model, cp), "Failed to create context");
   model.vocab = check(llama_model_get_vocab(model), "Failed to get vocabulary");
   model.sampler = check(llama_sampler_chain_init(sp), "Failed to initialize sampler");
+  model.json = check(llama_sampler_chain_init(sp), "Failed to initialize json sampler");
   if (paths.length > 1) {
     model.vision = check(mtmd_init_from_file(paths[1], model, mcp), "Failed to load vision model");
   }
