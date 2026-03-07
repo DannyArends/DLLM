@@ -3,20 +3,18 @@
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
 
-import std.file : write, exists, remove;
+import std.file : write;
 import std.format : format;
 import std.json : JSONValue;
-import std.path : buildNormalizedPath;
 import std.process : executeShell;
 import std.string : strip;
 
-import agent : agent;
 import files : getTempPath;
 import tools : Tool, RegisterTools;
 
 mixin RegisterTools;
 
-@Tool("Execute code in an isolated Docker sandbox. language can be: python, javascript, bash, r")
+@Tool("Execute code in an isolated Docker sandbox. Supported languages: python, javascript, bash, r")
 string runCode(string language, string code) {
   try {
     string image;
@@ -26,7 +24,7 @@ string runCode(string language, string code) {
       case "javascript": image = "node:alpine";        cmd = "node /code";    break;
       case "bash":       image = "alpine";             cmd = "sh /code";      break;
       case "r":          image = "r-base";             cmd = "Rscript /code"; break;
-      default: return format("Error: unsupported language '%s'", language);
+      default: return(format("Error: unsupported language '%s'", language));
     }
 
     string path = getTempPath(language == "javascript" ? "js" : language);
@@ -39,9 +37,9 @@ string runCode(string language, string code) {
     );
 
     auto result = executeShell(docker);
-    return JSONValue([
+    return(JSONValue([
       "exit_code": JSONValue(result.status),
       "output":    JSONValue(result.output.strip())
-    ]).toString();
-  } catch (Exception e) { return format("Error: %s", e.msg); }
+    ]).toString());
+  } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }

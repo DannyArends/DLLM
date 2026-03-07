@@ -34,7 +34,7 @@ string queryRAG(string question) {
 @Tool("Read / Load into RAG the contents of a file located at path.")
 string readFile(string path) {
   auto text = readText(path);
-  auto nChunk = agent.rag.ingest(text);
+  auto nChunk = agent.rag.ingest(text, path);
   return(ingestFmt.format(path, text.length, nChunk[0], nChunk[1]));
 }
 
@@ -117,5 +117,3 @@ string writeMemory(string content) {
     return JSONValue(["path": JSONValue(path), "length": JSONValue(content.length)]).toString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
-
-

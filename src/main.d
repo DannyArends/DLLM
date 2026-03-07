@@ -7,7 +7,7 @@ import includes;
 import utils;
 
 import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear, free;
-import rag : RAG;
+import rag : RAG, load, save;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
 import tools : toolsToJSON, parse, buildJsonGrammar;
@@ -48,6 +48,8 @@ int main(string[] args) {
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
+  agent.rag.load("data/rag.bin");
+  scope(exit) agent.rag.save("data/rag.bin");
 
   // Add the system prompt with tools
   agent.history ~= llama_chat_message(toStringz("system"), 

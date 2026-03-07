@@ -50,7 +50,7 @@ string webFetch(string url) {
     // Collapse whitespace
     content = replaceAll(content, regex(r"\s+"), " ");
     content = content.strip();
-    auto nChunk = agent.rag.ingest(content);
+    auto nChunk = agent.rag.ingest(content, url);
     return(ingestFmt.format(url, content.length, nChunk[0], nChunk[1]));
   } catch (Exception e) { return "Error: " ~ fromStringz(e.msg); }
 }

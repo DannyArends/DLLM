@@ -14,7 +14,7 @@ public import std.file : exists, readText, remove;
 public import std.json : JSONValue;
 public import std.math : sqrt;
 public import std.range : take, zip;
-public import std.stdio : readln, write, writeln, writef, writefln;
+public import std.stdio : File, readln, write, writeln, writef, writefln;
 public import std.string : strip, fromStringz, toStringz, lastIndexOf;
 public import core.time : MonoTime;
 public import std.typecons : tuple;
@@ -48,4 +48,17 @@ int nTokens(mtmd_input_chunks* chunks) {
     total += mtmd_input_chunk_get_n_pos(mtmd_input_chunks_get(chunks, i));
   }
   return total;
+}
+
+// Write an array as binary
+void writeRAG(T)(ref File f, T[] data) {
+  ulong len = data.length; f.rawWrite((&len)[0..1]); f.rawWrite(data);
+}
+
+// Read an array from binary
+T[] readRAG(T)(ref File f) {
+  ulong len; f.rawRead((&len)[0..1]);
+  if (len > 100_000_000) throw new Exception(format("Corrupt RAG: implausible length %d", len));
+  T[] buf = new T[len]; f.rawRead(buf);
+  return buf;
 }
