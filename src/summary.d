@@ -30,7 +30,7 @@ string summarize(ref Summary summary, llama_chat_message[] history) {
   }
 
   llama_chat_message[] msgHistory = [
-    llama_chat_message(toStringz("system"), toStringz(readText("templates/summary.txt"))),
+    llama_chat_message(toStringz("system"), toStringz(readText("templates/SUMMARY.md"))),
     llama_chat_message(toStringz("user"), toStringz(msgs.data))
   ];
 

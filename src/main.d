@@ -55,10 +55,9 @@ int main(string[] args) {
 
   // Add the system prompt with tools
   agent.history ~= llama_chat_message(toStringz("system"),
-                                      toStringz(format(readText("templates/agent.txt"),
+                                      toStringz(format(readText("templates/AGENT.md"),
                                       currentDate(),
                                       toolsToJSON(),
-                                      memento,
                                       memento.readText())));
   agent.process(agent.prompt(false));
 

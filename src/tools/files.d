@@ -24,11 +24,11 @@ import tools : Tool, RegisterTools;
 mixin RegisterTools;
 
 immutable string ingestFmt = "File '%s' (%d characters, %d tokens), ingested as %d chunks into RAG";
-immutable string memento = "./workspace/MEMENTO.md";
+immutable string memento = "./templates/MEMENTO.md";
 
 string getTempPath(string extension = "txt") {
   extension = extension.replace(".", "").replace("/", "").replace("\\", "");
-  string path = buildNormalizedPath(format("%s/out/agent_%08x.%s", CWD, uniform!uint(), extension));
+  string path = buildNormalizedPath(format("%s/workspace/agent_%08x.%s", CWD, uniform!uint(), extension));
   agent.tmp ~= path;
   return(path);
 }
@@ -119,7 +119,7 @@ string listDirectory(string path) {
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
-@Tool("Write content to a file in out/, returns the file path.")
+@Tool("Write content to a file in ./workspace/, returns the file path.")
 string writeFile(string content, string extension = "txt") {
   try {
     string path = getTempPath(extension);
