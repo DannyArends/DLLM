@@ -33,7 +33,9 @@ immutable string CWD;
 shared static this() { CWD = buildNormalizedPath(getcwd()); }
 
 bool isSafePath(string path) {
-  return buildNormalizedPath(path.absolutePath()).startsWith(CWD);
+  auto res = buildNormalizedPath(path.absolutePath()).startsWith(CWD);
+  if(!res) writeln("====== ! = "~ path);
+  return res;
 }
 
 // No ouput, only warnings from llama layer

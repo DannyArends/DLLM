@@ -32,6 +32,7 @@ Execute with prompt to OneShot:
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
   dub -- "What date is it today ? and how is the weather today in Newcastle upon Tyne (UK) ?"
   dub -- "Download the image at https://picsum.photos/400, load it, and describe it"
+  dub -- "Write a python script into a file that writes 'Hellow World'"
 ```
 
 Or start an interactive session:

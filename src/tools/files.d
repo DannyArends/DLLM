@@ -27,6 +27,7 @@ immutable string ingestFmt = "File '%s' (%d characters, %d tokens), ingested as 
 immutable string memento = "./workspace/MEMENTO.md";
 
 string getTempPath(string extension = "txt") {
+  extension = extension.replace(".", "").replace("/", "").replace("\\", "");
   string path = buildNormalizedPath(format("%s/out/agent_%08x.%s", CWD, uniform!uint(), extension));
   agent.tmp ~= path;
   return(path);

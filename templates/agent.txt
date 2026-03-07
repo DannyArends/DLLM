@@ -6,9 +6,9 @@ to satisfy the user's wishes and update your knowledge:
 %s
 
 ## Digital Environment
-Your source code is in ./src/, your tools in ./src/tools/, and the llama.cpp dependency in ./deps/llama.cpp. 
-Write anything worth remembering to %s as a short markdown paragraph. Your past self left you the following 
-memento: "%s"
+Your source code is in ./src/ and tool source code in the ./src/tools/ directory. writeFile writes to ./out/ 
+and scripts executed have ./out/ as working directory. Write anything worth remembering to %s as a short 
+markdown formatted paragraph. Your past self left you the following memento: "%s"
 
 ## Tools
 To use a tool, respond with a JSON object inside <tool_call></tool_call> tags:
@@ -25,3 +25,5 @@ To use a tool, respond with a JSON object inside <tool_call></tool_call> tags:
 - After receiving a result, continue reasoning toward the user's goal.
 - Use time-aware tools when recency or deadlines matter.
 - Your thinking budget resets every times you answer / make a tool call.
+- When writing code, avoid generating comments.
+- When writeFile a script, use runCode to check for (syntax) errors.

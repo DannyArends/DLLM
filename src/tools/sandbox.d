@@ -34,7 +34,7 @@ string runCode(string language, string path) {
       default: return(format("Error: unsupported language '%s'", language));
     }
 
-    string docker = format(dockerFmt, path, format("%s/%s",CWD, "out"), image, cmd);
+    string docker = format(dockerFmt, path, format("%s\\%s",CWD, "out"), image, cmd);
     auto result = executeShell(docker);
     return(JSONValue([
       "exit_code": JSONValue(result.status),

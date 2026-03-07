@@ -65,7 +65,7 @@ mixin template RegisterTools() {
             // Build the tool executor
             auto executor = (JSONValue args) {
               static foreach(paramName; ParamNames) {
-                if (paramName !in args) { return "Error: missing " ~ paramName ~ " parameter"; }
+                if (paramName !in args) { return(format("Error: Unkown parameter '%s'",paramName)); }
               }
 
               string[] argValues;

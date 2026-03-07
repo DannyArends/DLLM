@@ -50,8 +50,8 @@ int main(string[] args) {
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
-  agent.rag.load("workspace/rag.bin");
-  scope(exit) agent.rag.save("workspace/rag.bin");
+  agent.rag.load("workspace/RAG.bin");
+  scope(exit) agent.rag.save("workspace/RAG.bin");
 
   // Add the system prompt with tools
   agent.history ~= llama_chat_message(toStringz("system"),
