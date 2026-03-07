@@ -2,5 +2,6 @@
 bin/
 data/
 workspace/
+templates/MEMENTO.md
 
 *.bin
