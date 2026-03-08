@@ -1,23 +1,24 @@
 ## DLLM - D Language 🤖 on 🦙.cpp
-A minimal, clean D language agent built directly on [llama.cpp](https://github.com/ggerganov/llama.cpp) via 
+A minimal, clean [D language](https://dlang.org/) agent built directly on [llama.cpp](https://github.com/ggerganov/llama.cpp) via 
 [importC](https://dlang.org/spec/importc.html). No Python, no bindings, no overhead. Runs a three-model 
-pipeline (_agent_, _summary_, _embed_) with full CUDA offloading, multimodal vision via mtmd, RAG, KV-cache 
-condensation, thinking budget, and an extensible tool system (auto-registered via UDA `@Tool`) covering file 
-I/O, web search, Docker sandboxed code execution, and audio playback.
+pipeline (_agent_, _summary_, _embed_) with full [CUDA](https://developer.nvidia.com/cuda/toolkit) 
+offloading, multimodal vision via mtmd, RAG, KV-cache condensation, thinking budget, and an extensible tool 
+system (auto-registered via user-defined attribute *@Tool("Description")* on functions). Tools included 
+cover file I/O, web search, date & time, text encoding, Docker sandboxed code execution, and audio playback.
 
 ### Build with 🛠️
 Compilation guide for dependencies are found in [`deps/README.md`](deps/README.md)
-- **D Compiler**: DMD, LDC, or GDC
+- **D Compiler**: Use either DMD, LDC, or GDC to compile the agent.
 - **llama.cpp**: Bundled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
-- **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
-- **SearxNG**: Required for webSearch() tool
-- **Docker**: Required for runCode() tool
+- **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support.
+- **SearxNG**: [SearcNG](https://github.com/searxng/searxng) is used to provide unlimited web searching by the webSearch() tool.
+- **Docker**: [Docker](https://www.docker.com/) provides a code execution sandbox used by the runCode() tool.
 
 ### Models 🧠
 Tested with the following  models (available on [HuggingFace](https://huggingface.co/)):
-- **Agent**: [Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q5_K_M.gguf) & [mmproj-F16](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/mmproj-F16.gguf) (vision)
-- **Summary**: [Qwen2.5-0.5b instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf)
-- **Embed**: [Nomic embed text v1.5](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf)
+- **Agent**: [Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q5_K_M.gguf) & [mmproj-F16](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/mmproj-F16.gguf) (vision).
+- **Summary**: [Qwen2.5-0.5b instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf).
+- **Embed**: [Nomic embed text v1.5](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf).
 
 Model paths are configured in [`src/main.d`](src/main.d) and with the above model setup require 8GB VRAM.
 
