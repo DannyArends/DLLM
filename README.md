@@ -49,5 +49,4 @@ welcome to post comments on commits.
 
 ### License ⚖️
 
-Written by Danny Arends and released under the GNU GENERAL PUBLIC LICENSE Version 3 (GPLv3). 
-See [`LICENSE.txt`](./LICENSE.txt).
+Written by Danny Arends and released as [GPLv3](./LICENSE.txt)
