@@ -24,6 +24,14 @@ Compilation guide [here](deps/README.md)
 - **SearxNG**: Required for webSearch() tool
 - **Docker**: Required for runCode() tool
 
+### Models 🧠
+Tested with the following free models, all available on [HuggingFace](https://huggingface.co/):
+- **Agent**: [Qwen3.5-4B-Q4_K_M.gguf](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF) + mmproj-F16.gguf (vision)
+- **Summary**: [qwen2.5-0.5b-instruct-q4_k_m.gguf](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF)
+- **Embed**: [nomic-embed-text-v1.5.Q4_K_M.gguf](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF)
+
+Model paths are configured in [`src/main.d`](src/main.d).
+
 ### Run ⚙️
 Execute with prompt to OneShot:
 ```shell
