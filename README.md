@@ -11,7 +11,7 @@ Compilation guide for dependencies are found in [`deps/README.md`](deps/README.m
 - **D Compiler**: Use either DMD, LDC, or GDC to compile the agent.
 - **llama.cpp**: Bundled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support.
-- **SearxNG**: [SearcNG](https://github.com/searxng/searxng) is used to provide unlimited web searching by the webSearch() tool.
+- **SearxNG**: [SearxNG](https://github.com/searxng/searxng) is used to provide unlimited web searching by the webSearch() tool.
 - **Docker**: [Docker](https://www.docker.com/) provides a code execution sandbox used by the runCode() tool.
 
 ### Models 🧠
