@@ -15,7 +15,7 @@ Compilation guide for dependencies are found in [`deps/README.md`](deps/README.m
 - **Docker**: [Docker](https://www.docker.com/) provides a code execution sandbox used by the runCode() tool.
 
 ### Models 🧠
-Tested with the following  models (available on [HuggingFace](https://huggingface.co/)):
+Tested with the following [HuggingFace](https://huggingface.co/) models:
 - **Agent**: [Qwen3.5-4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q5_K_M.gguf) & [mmproj-F16](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/mmproj-F16.gguf) (vision).
 - **Summary**: [Qwen2.5-0.5b instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf).
 - **Embed**: [Nomic embed text v1.5](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf).
