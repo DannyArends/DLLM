@@ -19,7 +19,7 @@ No Python overhead with direct llama.cpp C API bindings using a modular design i
 ### Build with 🛠️
 Compilation guide [here](deps/README.md)
 - **D Compiler**: DMD, LDC, or GDC
-- **llama.cpp**: Bundeled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- **llama.cpp**: Bundled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
 - **SearxNG**: Required for webSearch() tool
 - **Docker**: Required for runCode() tool
@@ -28,10 +28,11 @@ Compilation guide [here](deps/README.md)
 Execute with prompt to OneShot:
 ```shell
   dub -- "What is your name?"
-  dub -- "Download the image at https://picsum.photos/400, load it, and describe it"
+  dub -- "Download the image at https://picsum.photos/400, load it, and write a poem about it"
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
   dub -- "Write a python script into a file that generates an human audible wav file"
-  dub -- "Create a 16-bit PCM WAV with \"Hi, it works\" (use gtts) and then playWAV"
+  dub -- "Generate a spoken 16-bit PCM WAV of 'Hello World' and play it"
+  dub -- "Ingest the file README.md, into your RAG then tell me what DLLM is in one sentence"
   dub -- "Read the file dub.json, and summarize in a single line what the file is about."
   dub -- "How is the weather in Newcastle upon Tyne (UK) ?"
   dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
