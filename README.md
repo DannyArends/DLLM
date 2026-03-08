@@ -4,7 +4,7 @@ A minimal, clean [D language](https://dlang.org/) agent built directly on [llama
 pipeline (_agent_, _summary_, _embed_) with full [CUDA](https://developer.nvidia.com/cuda/toolkit) 
 offloading, multimodal vision via mtmd, RAG, KV-cache condensation, thinking budget, and an extensible tool 
 system (auto-registered via user-defined attribute *@Tool("Description")* on functions). Tools included 
-cover file I/O, web search, date & time, text encoding, Docker sandboxed code execution, and audio playback.
+cover: file I/O, web search, date & time, text encoding, Docker sandboxed code execution, and audio playback.
 
 ### Build with 🛠️
 Compilation guide for dependencies are found in [`deps/README.md`](deps/README.md)
