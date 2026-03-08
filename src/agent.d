@@ -92,9 +92,11 @@ void clear(ref Agent agent) {
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {
-  return(calls.map!(call => JSONValue(["tool": JSONValue(call.name), 
-                                       "args": JSONValue(call.arguments), 
-                                       "result": JSONValue(executeTool(call.name, call.arguments))]).toString()).join);
+  return calls.map!((call) {
+    return JSONValue(["tool": JSONValue(call.name), 
+                      "args": JSONValue(call.arguments), 
+                      "result": JSONValue(executeTool(call.name, call.arguments))]).toString();
+  }).join;
 }
 
 // Generate a reponse

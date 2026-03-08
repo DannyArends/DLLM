@@ -31,7 +31,7 @@ Execute with prompt to OneShot:
   dub -- "Download the image at https://picsum.photos/400, load it, and describe it"
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
   dub -- "Write a python script into a file that generates an human audible wav file"
-  dub -- "Write a python script to create a 16-bit PCM WAV file with \"Hi, it works\" (use gtts and pydub) and then playWAV"
+  dub -- "Create a 16-bit PCM WAV with \"Hi, it works\" (use gtts) and then playWAV"
   dub -- "Read the file dub.json, and summarize in a single line what the file is about."
   dub -- "How is the weather in Newcastle upon Tyne (UK) ?"
   dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
