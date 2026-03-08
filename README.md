@@ -1,20 +1,10 @@
 ## DLLM - D Language 🤖 on 🦙.cpp
-A minimal, clean D language interface for running a local multimodal LLM agent using [importC](https://dlang.org/spec/importc.html) 
-around [llama.cpp](https://github.com/ggerganov/llama.cpp). DLLM exposes the full llama.cpp C API directly from D with no Python 
-overhead, supporting vision-language models via the mtmd API, automatic chat template detection, and an extensible tool-calling 
-agent loop.
-
-### Features 🚀
-No Python overhead with direct llama.cpp C API bindings using a modular design in the D language.
-- **GPU acceleration** - Full CUDA support with automatic offloading.
-- **Multimodal** - Vision-language model support via the mtmd API.
-- **Chat template detection** - Automatic model-agnostic prompt formatting.
-- **UTF-8 handling** - Proper emoji and multi-byte character support on Windows.
-- **Efficient batching** - Handles prompts with automatic chunking, cleans context on tool execution.
-- **Agent, Summary, Embed** - Three-model setup for efficient tasking.
-- **Think budget & KV-condensation** - KV-cache condensation and think budget to limit reasoning.
-- **Auto-registered Tool** - Tools are auto-registered via UDA (`@Tool`).
-- **Tools available** - RAG, Docker sandbox, Time, Encoding, File & Web search.
+## DLLM - D Language 🤖 on 🦙.cpp
+A minimal, clean D language agent built directly on [llama.cpp](https://github.com/ggerganov/llama.cpp) via 
+[importC](https://dlang.org/spec/importc.html) — no Python, no bindings, no overhead. Runs a three-model 
+pipeline (agent, summary, embed) with full CUDA offloading, multimodal vision via mtmd, RAG, KV-cache 
+condensation, thinking budget, and an extensible tool system (auto-registered via UDA `@Tool`) covering file 
+I/O, web search, Docker sandboxed code execution, and audio playback.
 
 ### Build with 🛠️
 Compilation guide for dependencies are found in [`deps/README.md`](deps/README.md)
