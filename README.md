@@ -17,7 +17,7 @@ No Python overhead with direct llama.cpp C API bindings using a modular design i
 - **Tools available** - RAG, Docker sandbox, Time, Encoding, File & Web search.
 
 ### Build with 🛠️
-Compilation guide for dependencies are found [here](deps/README.md)
+Compilation guide for dependencies are found in [`deps/README.md`](deps/README.md)
 - **D Compiler**: DMD, LDC, or GDC
 - **llama.cpp**: Bundled with [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - **Cuda Toolkit**: Built with [CUDA](https://developer.nvidia.com/cuda/toolkit) for GPU acceleration support
@@ -61,4 +61,4 @@ welcome to post comments on commits.
 ### License ⚖️
 
 Written by Danny Arends and is released under the GNU GENERAL PUBLIC LICENSE Version 3 (GPLv3). 
-See [LICENSE.txt](./LICENSE.txt).
+See [`LICENSE.txt`](./LICENSE.txt).
