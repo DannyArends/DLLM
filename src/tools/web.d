@@ -89,7 +89,7 @@ string downloadImage(string url) {
     auto clean = url.split("?")[0].split("#")[0];  // strip query string and fragment
     string ext = clean.extension;
     if (ext.length == 0 || ext.length > 5) ext = ".png";
-    string path = getTempPath(ext[1..$]);
+    string path = getTempPath("image", ext[1..$]);
     download(url, path);
     return(path);
   } catch (Exception e) {

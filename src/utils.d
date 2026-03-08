@@ -15,7 +15,7 @@ public import std.file : getcwd, exists, readText, remove;
 public import std.json : JSONValue;
 public import std.math : sqrt;
 public import std.numeric : dotProduct;
-public import std.path : buildNormalizedPath, absolutePath, isAbsolute;
+public import std.path : buildNormalizedPath, absolutePath, isAbsolute, dirSeparator;
 public import std.range : take, zip;
 public import std.stdio : File, readln, write, writeln, writef, writefln;
 public import std.string : strip, fromStringz, toStringz, lastIndexOf, startsWith;
@@ -28,12 +28,17 @@ static if(!__traits(compiles, LLAMA_TOKEN_NULL)) {
 
 extern(Windows) uint SetConsoleOutputCP(uint wCodePageID);
 
+immutable string CRD;
 immutable string CWD;
 
-shared static this() { CWD = buildNormalizedPath(getcwd()); }
+shared static this() {
+  CRD = buildNormalizedPath(getcwd());
+  CWD = buildNormalizedPath(CRD ~ "/workspace") ~ dirSeparator;
+}
 
-bool isSafePath(string path) {
-  auto res = buildNormalizedPath(path.absolutePath()).startsWith(CWD);
+bool isSafePath(string path, string f) {
+  string cmp = ((f=="r")? CRD : CWD);
+  auto res = buildNormalizedPath(path.absolutePath()).startsWith(cmp);
   if(!res) writeln("====== ! = "~ path);
   return res;
 }

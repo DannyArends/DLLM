@@ -12,6 +12,7 @@ import files : memento;
 import summary : Summary;
 import model : load, mGpu, mCpu, context, embedding, free;
 import tools : toolsToJSON, parse, buildJsonGrammar;
+import sandbox : ensurePythonImage;
 import time : currentDate;
 
 int main(string[] args) {
@@ -19,6 +20,7 @@ int main(string[] args) {
   llama_backend_init();
   scope (exit) { llama_backend_free(); }
   setupConsole();
+  ensurePythonImage();
 
   // CPU: Summary model with low temp sampler
   auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mCpu(), context(32768, 1024, GGML_TYPE_Q8_0, false));
@@ -41,7 +43,7 @@ int main(string[] args) {
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
   // JSON sampler
-  llama_sampler_chain_add(model.json, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
+  llama_sampler_chain_add(model.json, llama_sampler_init_temp(0.3f));
   llama_sampler_chain_add(model.json, llama_sampler_init_grammar(model.vocab, buildJsonGrammar().toStringz(), "root"));
   llama_sampler_chain_add(model.json, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
