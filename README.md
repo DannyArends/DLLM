@@ -30,11 +30,12 @@ Execute with prompt to OneShot:
   dub -- "What is your name?"
   dub -- "Download the image at https://picsum.photos/400, load it, and write a poem about it"
   dub -- "What date is it today ? and which day of the week was 2 days ago ?"
-  dub -- "Write a python script into a file that generates an human audible wav file"
+  dub -- "Generate a 8-second audio file of a 440hz sine wave that fades out, then play it"
   dub -- "Generate a spoken 16-bit PCM WAV of 'Hello World' and play it"
   dub -- "Ingest the file README.md into RAG, tell me what DLLM is in one sentence"
   dub -- "Read the file dub.json, and summarize in a single line what the file is about."
   dub -- "How is the weather in Newcastle upon Tyne (UK) ?"
+  dub -- "Fetch the Bitcoin price history online, plot it as a chart and save to workspace"
   dub -- "Think about then tell me, a story about math, 4 lines of text and be creative!"
 ```
 
