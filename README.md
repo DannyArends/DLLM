@@ -1,7 +1,7 @@
 ## DLLM - D Language 🤖 on 🦙.cpp
 A minimal, clean D language agent built directly on [llama.cpp](https://github.com/ggerganov/llama.cpp) via 
-[importC](https://dlang.org/spec/importc.html) — no Python, no bindings, no overhead. Runs a three-model 
-pipeline (agent, summary, embed) with full CUDA offloading, multimodal vision via mtmd, RAG, KV-cache 
+[importC](https://dlang.org/spec/importc.html). No Python, no bindings, no overhead. Runs a three-model 
+pipeline (_agent_, _summary_, _embed_) with full CUDA offloading, multimodal vision via mtmd, RAG, KV-cache 
 condensation, thinking budget, and an extensible tool system (auto-registered via UDA `@Tool`) covering file 
 I/O, web search, Docker sandboxed code execution, and audio playback.
 
