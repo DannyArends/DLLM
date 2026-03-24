@@ -109,7 +109,6 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
   string tBuf;
   enum size_t MAX_TAG = "</tool_call>".length;
   bool inToolCall = false;
-  char[256] buf = 0;
   size_t i = 0;
   auto t0 = MonoTime.currTime;
 
