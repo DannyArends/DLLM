@@ -44,7 +44,7 @@ mixin template RegisterTools() {
     import tools : ALL_TOOLS, Tool, ToolDef, ToolParam;
     import std.conv : to;
     import std.traits : hasUDA, getUDAs, ParameterIdentifierTuple;
-    import std.json : JSONValue;
+    import std.json : JSONValue, JSONType;
     import std.array : join;
 
     // Get reference to current module an scan all functions for UDAs
@@ -69,8 +69,9 @@ mixin template RegisterTools() {
               }
 
               string[] argValues;
-              static foreach(paramName; ParamNames) { argValues ~= args[paramName].str; }
-
+              static foreach(paramName; ParamNames) { 
+                argValues ~= args[paramName].type == JSONType.string ? args[paramName].str : args[paramName].toString(); 
+              }
               enum callStr = {
                   string[] argRefs;
                   static foreach(i; 0 .. ParamNames.length) { argRefs ~= "argValues[" ~ i.to!string ~ "]"; }
