@@ -6,7 +6,7 @@
 import std.file : isDir, write;
 import std.format : format;
 import std.json : JSONValue;
-import std.process : executeShell;
+import std.process : execute;
 import std.string : strip, toLower, indexOf;
 
 import files : getTempPath;
@@ -14,8 +14,6 @@ import tools : Tool, RegisterTools;
 import utils;
 
 mixin RegisterTools;
-
-string dockerFmt = "docker run --rm --memory 1024m --cpus 2.0 --stop-timeout 30 --ulimit nofile=1024:1024 -v %s:/code:ro -v %s:/workspace %s %s 2>&1";
 
 @Tool("Execute code located at path in an isolated Docker sandbox, make sure path is an absolute path. Supported languages: 
 Python, Javascript, Bash, D, and R.")
@@ -25,18 +23,26 @@ string runCode(string language, string path) {
   if (isDir(path)) return(format("Error: path '%s' is a directory, not a file", path));
   try {
     string image;
-    string cmd;
+    string lang_cmd;
     switch (language.toLower()) {
-      case "python":     image = "dllm-python";    cmd = "sh -c \"cd /workspace && python3 /code\"";  break;
-      case "javascript": image = "node:alpine";    cmd = "sh -c \"cd /workspace && node /code\"";     break;
-      case "bash":       image = "alpine";         cmd = "sh -c \"cd /workspace && sh /code\"";       break;
-      case "r":          image = "r-base";         cmd = "sh -c \"cd /workspace && Rscript /code\"";  break;
-      case "d":          image = "dlanguage/dmd";  cmd = "sh -c \"cd /workspace && dmd -run /code\""; break;
+      case "python":     image = "dllm-python";   lang_cmd = "python3 /code"; break;
+      case "javascript": image = "node:alpine";   lang_cmd = "node /code";    break;
+      case "bash":       image = "alpine";        lang_cmd = "sh /code";      break;
+      case "r":          image = "r-base";        lang_cmd = "Rscript /code"; break;
+      case "d":          image = "dlanguage/dmd"; lang_cmd = "dmd -run /code"; break;
       default: return(format("Error: unsupported language '%s'", language));
     }
 
-    string docker = format(dockerFmt, path, CWD, image, cmd);
-    auto result = executeShell(docker);
+    auto result = execute(["docker", "run", "--rm",
+      "--memory", "1024m",
+      "--cpus", "2.0",
+      "--stop-timeout", "30",
+      "--ulimit", "nofile=1024:1024",
+      "-v", path ~ ":/code:ro",
+      "-v", CWD ~ ":/workspace",
+      image,
+      "sh", "-c", "cd /workspace && " ~ lang_cmd  // lang_cmd = just the interpreter + /code
+    ]);
     return(JSONValue([
       "exit_code": JSONValue(result.status),
       "output":    JSONValue(result.output.strip())
@@ -48,7 +54,7 @@ string runCode(string language, string path) {
 // If we need to update, run: docker rmi dllm-python
 void ensurePythonImage(string tag = "dllm-python") {
   // Check if image exists
-  auto check = executeShell("docker images -q " ~ tag);
+  auto check = execute(["docker", "images", "-q ", tag]);
   if (check.output.strip().length > 0) return;
 
   // Build from inline Dockerfile
@@ -60,6 +66,7 @@ void ensurePythonImage(string tag = "dllm-python") {
   tmp.write(dockerfile);
   auto call = "docker build -t " ~ tag ~ " -f " ~ tmp ~ " .";
   writeln(call);
-  auto result = executeShell(call);
+  auto result = execute(call);
   if (result.status != 0) writeln("[docker] Build failed: ", result.output);
 }
+

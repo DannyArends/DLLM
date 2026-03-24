@@ -6,9 +6,10 @@
 import includes;
 
 import std.array : join;
+import std.algorithm : canFind;
 import std.conv : to;
 import std.path : baseName, buildNormalizedPath;
-import std.process : execute, executeShell;
+import std.process : execute;
 import std.json : JSONValue;
 import std.file : readText, getSize, exists, isDir, dirEntries, SpanMode, write, tempDir;
 import std.format : format;
@@ -165,7 +166,7 @@ string replaceInFile(string path, string search, string replacement) {
 @Tool("Write a Memento to your future self, returns nothing")
 string writeMemento(string content) {
   try {
-    if (!isSafePath(memento, "r")) return "Error: path outside allowed directories";
+    if (!isSafePath(memento, "w")) return "Error: path outside allowed directories";
     memento.write(content);
     writefln("=== Wrote to '%s'", memento);
     return JSONValue.emptyObject.toString();
@@ -176,7 +177,8 @@ string writeMemento(string content) {
 string playWAV(string path) {
   if (!isSafePath(path, "r")) return "Error: path outside allowed directories";
   if (!exists(path)) return "Error: file does not exist";
-  version(Windows) { auto r = executeShell("powershell -c (New-Object Media.SoundPlayer '" ~ path ~ "').PlaySync()"); }
-  version(linux)   { auto r = executeShell("aplay \"" ~ path ~ "\""); }
+  if (path.canFind("'", ";", "&", "|", "`")) return "Error: invalid characters in path";
+  version(Windows) { auto r = execute(["powershell", "-c", "(New-Object Media.SoundPlayer '" ~ path ~ "').PlaySync()"]); }
+  version(linux) { auto r = execute(["aplay", path]); }
   return r.status == 0 ? "OK" : "Error: " ~ r.output.strip();
 }
