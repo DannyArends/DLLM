@@ -100,3 +100,12 @@ LlamaModel load(const(char)*[] paths,
   }
   return(model);
 }
+
+unittest {
+  import utils : check;
+  check(clean("<think>\nsome thoughts\n</think>\nhello"), "hello", "clean: strips think block");
+  check(clean("no think block"), "no think block","clean: passthrough");
+  check(clean("<think>\n</think>\n"), "", "clean: empty after think");
+  check(clean("before<think>\n</think>\nafter"), "after", "clean: uses lastIndexOf");
+}
+

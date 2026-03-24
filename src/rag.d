@@ -99,8 +99,20 @@ void load(ref RAG rag, string path, bool verbose = false) {
   if (verbose) writefln("[RAG] Loaded %d chunks", rag.index.length);
 }
 
+
 unittest {
-  assert(cosineSimilarity([1f,0f], [1f,0f]) == 1.0f);
-  assert(cosineSimilarity([1f,0f], [0f,1f]) == 0.0f);
+  import utils : check;
+  import std.format : format;
+
+  void checkFloat(float result, float expected, string label) {
+    import std.math : abs;
+    assert(abs(result - expected) < 1e-5f, label ~ format(" got %f expected %f", result, expected));
+    writefln("  PASS: %s", label);
+  }
+
+  checkFloat(cosineSimilarity([1f, 0f], [1f, 0f]),  1.0f, "cosineSimilarity: identical");
+  checkFloat(cosineSimilarity([1f, 0f], [0f, 1f]),  0.0f, "cosineSimilarity: orthogonal");
+  checkFloat(cosineSimilarity([1f, 0f], [-1f, 0f]), -1.0f, "cosineSimilarity: opposite");
+  checkFloat(cosineSimilarity([], []), 0.0f, "cosineSimilarity: zero vectors");
 }
 

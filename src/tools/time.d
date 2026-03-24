@@ -78,3 +78,23 @@ string formatTimestamp(string timestamp) {
     return dt.toISOExtString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
+
+unittest {
+  import utils : check;
+  check(dayOfWeek("2024-01-01"), "mon", "dayOfWeek: monday");
+  check(dayOfWeek("2024-12-25"), "wed", "dayOfWeek: wednesday");
+  check(dayOfWeek("2000-01-01"), "sat", "dayOfWeek: saturday");
+
+  check(addDays("2024-01-01",  "1"),  "2024-01-02", "addDays: forward");
+  check(addDays("2024-01-01",  "-1"), "2023-12-31", "addDays: backward across year");
+  check(addDays("2024-02-28",  "1"),  "2024-02-29", "addDays: leap year");
+  check(addDays("2024-02-29",  "1"),  "2024-03-01", "addDays: past leap day");
+
+  check(daysBetween("2024-01-01", "2024-01-11"), "10",  "daysBetween: positive");
+  check(daysBetween("2024-01-11", "2024-01-01"), "-10", "daysBetween: negative");
+  check(daysBetween("2024-01-01", "2024-01-01"), "0",   "daysBetween: same day");
+
+  check(isDatePast("2000-01-01"), "Past",   "isDatePast: past");
+  check(isDatePast("2999-01-01"), "Future", "isDatePast: future");
+}
+

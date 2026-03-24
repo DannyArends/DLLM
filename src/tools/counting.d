@@ -33,3 +33,20 @@ string wordLength(string word) {
     return to!string(word.strip().length);
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
+
+unittest {
+  import utils : check;
+  check(countWords("hello world"),  "2", "countWords: basic");
+  check(countWords("  spaced  "),   "1", "countWords: strips whitespace");
+  check(countWords("one two three"),"3", "countWords: three words");
+  check(countWords(""),             "0", "countWords: empty string");
+
+  check(nOccurrences("banana", "an"), "2", "nOccurrences: multiple");
+  check(nOccurrences("hello",  "z"),  "0", "nOccurrences: no match");
+  check(nOccurrences("aaa",    "aa"), "1", "nOccurrences: non-overlapping");
+
+  check(wordLength("hello"),   "5", "wordLength: basic");
+  check(wordLength("  hi  "),  "2", "wordLength: strips whitespace");
+  check(wordLength(""),        "0", "wordLength: empty");
+}
+

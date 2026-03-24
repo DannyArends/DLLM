@@ -58,6 +58,12 @@ void setupConsole() {
 // Check if not null, if it is exit()
 T check(T)(T ptr, string msg) { if (!ptr) { writefln("[ERROR] %s", msg); exit(1); } return ptr; }
 
+void check(string result, string expected, string label) {
+  if (result == expected) {
+    writefln("  PASS: %s", label);
+  } else { writefln("  FAIL: %s — got '%s', expected '%s'", label, result, expected); assert(false); }
+}
+
 // nTokens across all chunks
 int nTokens(mtmd_input_chunks* chunks) {
   int total = 0;
@@ -78,3 +84,23 @@ T[] readRAG(T)(ref File f) {
   if (len > 100_000_000){ throw new Exception(format("Corrupt RAG: implausible length %d", len)); }
   T[] buf = new T[len]; f.rawRead(buf); return buf;
 }
+
+unittest {
+  // Read permission: must be within CRD (project root)
+  check(isSafePath(CRD, "r") ? "true" : "false", "true", "isSafePath: CRD root allowed for read");
+  check(isSafePath(CRD ~ "/src", "r") ? "true" : "false", "true", "isSafePath: subdir allowed for read");
+  check(isSafePath(CRD ~ "/src/main.d", "r") ? "true" : "false", "true", "isSafePath: file allowed for read");
+  check(isSafePath("/etc/passwd", "r") ? "true" : "false", "false", "isSafePath: /etc/passwd blocked for read");
+  check(isSafePath("/tmp/evil", "r") ? "true" : "false", "false", "isSafePath: /tmp blocked for read");
+
+  // Write permission: must be within CWD (workspace only)
+
+  check(isSafePath(CWD ~ "file.txt", "w") ? "true" : "false", "true",  "isSafePath: workspace file allowed for write");
+  check(isSafePath(CRD ~ "/src", "w") ? "true" : "false", "false", "isSafePath: src blocked for write");
+  check(isSafePath("/etc/passwd", "w") ? "true" : "false", "false", "isSafePath: /etc/passwd blocked for write");
+
+  // Path traversal attempts
+  check(isSafePath(CWD ~ "../src", "w") ? "true" : "false", "false", "isSafePath: traversal blocked for write");
+  check(isSafePath(CWD ~ "../src", "r") ? "true" : "false", "true",  "isSafePath: traversal within CRD allowed for read");
+}
+

@@ -51,3 +51,25 @@ string generateUUID() {
     return randomUUID().toString();
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
+
+unittest {
+  import utils : check;
+  import std.regex : matchFirst, regex;
+  import std.stdio : writefln;
+
+  check(base64Encode("hello"),        "aGVsbG8=", "base64Encode: basic");
+  check(base64Encode(""),             "",          "base64Encode: empty");
+  check(base64Decode("aGVsbG8="),     "hello",     "base64Decode: basic");
+  check(base64Decode(base64Encode("roundtrip")), "roundtrip", "base64: roundtrip");
+
+  check(md5Hash(""),      "d41d8cd98f00b204e9800998ecf8427e", "md5Hash: empty");
+  check(md5Hash("hello"), "5d41402abc4b2a76b9719d911017c592", "md5Hash: hello");
+
+  check(sha256Hash(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sha256Hash: empty");
+
+  auto uuid = generateUUID();
+  assert(uuid.length == 36, "generateUUID: length");
+  assert(matchFirst(uuid, regex(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")), "generateUUID: format");
+  writefln("  PASS: generateUUID: format and length");
+}
+
