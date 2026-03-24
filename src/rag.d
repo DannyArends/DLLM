@@ -2,6 +2,7 @@
  * Authors: Danny Arends
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
+module rag;
 
 import includes;
 import utils;
@@ -97,3 +98,9 @@ void load(ref RAG rag, string path, bool verbose = false) {
   }
   if (verbose) writefln("[RAG] Loaded %d chunks", rag.index.length);
 }
+
+unittest {
+  assert(cosineSimilarity([1f,0f], [1f,0f]) == 1.0f);
+  assert(cosineSimilarity([1f,0f], [0f,1f]) == 0.0f);
+}
+

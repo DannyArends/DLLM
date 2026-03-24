@@ -2,6 +2,7 @@
  * Authors: Danny Arends
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
+module time;
 
 import std.conv : to;
 import std.datetime;

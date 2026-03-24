@@ -9,6 +9,7 @@
 	"configurations": [
 	{
 		"name": "default",
+		"mainSourceFile": "src/main.d",
 		"targetType": "executable",
 		"targetPath": "bin",
 		"platforms": ["linux", "windows"],
