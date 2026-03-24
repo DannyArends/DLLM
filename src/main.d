@@ -20,7 +20,6 @@ int main(string[] args) {
   llama_backend_init();
   scope (exit) { llama_backend_free(); }
   setupConsole();
-  ensurePythonImage();
 
   // CPU: Summary model with low temp sampler
   auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mCpu(), context(32768, 1024, GGML_TYPE_Q8_0, false));
@@ -52,6 +51,7 @@ int main(string[] args) {
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
+  ensurePythonImage();
   agent.rag.load("workspace/RAG.bin");
   scope(exit) agent.rag.save("workspace/RAG.bin");
 
