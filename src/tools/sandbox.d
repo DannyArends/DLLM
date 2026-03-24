@@ -3,15 +3,16 @@
  * License: GPL-v3 (See accompanying file LICENSE.txt or copy at https://www.gnu.org/licenses/gpl-3.0.en.html)
  */
 
-import std.file : isDir, write;
+import std.file : isDir, write, exists;
 import std.format : format;
 import std.json : JSONValue;
 import std.process : execute;
+import std.stdio : writeln;
 import std.string : strip, toLower, indexOf;
 
 import files : getTempPath;
 import tools : Tool, RegisterTools;
-import utils;
+import utils : isSafePath, CWD;
 
 mixin RegisterTools;
 
@@ -54,7 +55,7 @@ string runCode(string language, string path) {
 // If we need to update, run: docker rmi dllm-python
 void ensurePythonImage(string tag = "dllm-python") {
   // Check if image exists
-  auto check = execute(["docker", "images", "-q ", tag]);
+  auto check = execute(["docker", "images", "-q", tag]);
   if (check.output.strip().length > 0) return;
 
   // Build from inline Dockerfile
@@ -64,9 +65,7 @@ void ensurePythonImage(string tag = "dllm-python") {
                        RUN pip install --no-cache-dir numpy scipy pandas matplotlib scikit-learn gtts pydub\n";
   auto tmp = getTempPath("Dockerfile", "dock");  // no extension
   tmp.write(dockerfile);
-  auto call = "docker build -t " ~ tag ~ " -f " ~ tmp ~ " .";
-  writeln(call);
-  auto result = execute(call);
+  auto result = execute(["docker", "build", "-t", tag, "-f", tmp, "."]);
   if (result.status != 0) writeln("[docker] Build failed: ", result.output);
 }
 

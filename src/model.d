@@ -33,7 +33,7 @@ llama_model_params mGpu() { llama_model_params mp = llama_model_default_params()
 llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggml_type type = GGML_TYPE_Q8_0, bool KQVonGpu = true) {
   llama_context_params cp = llama_context_default_params();
   cp.n_ctx = n_ctx; cp.n_batch = n_batch; cp.n_ubatch = n_batch; 
-  cp.n_threads = 8; cp.n_threads_batch = 8;
+  cp.n_threads = totalCPUs; cp.n_threads_batch = totalCPUs;
   cp.type_k = type; cp.type_v = type;
   cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = KQVonGpu; cp.no_perf = true;
   return(cp);

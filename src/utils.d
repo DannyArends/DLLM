@@ -16,6 +16,7 @@ public import std.json : JSONValue;
 public import std.math : sqrt;
 public import std.numeric : dotProduct;
 public import std.path : buildNormalizedPath, absolutePath, isAbsolute, dirSeparator;
+public import std.parallelism : totalCPUs;
 public import std.range : take, zip;
 public import std.stdio : File, readln, write, writeln, writef, writefln;
 public import std.string : strip, fromStringz, toStringz, lastIndexOf, startsWith;
