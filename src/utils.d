@@ -38,10 +38,7 @@ shared static this() {
 }
 
 bool isSafePath(string path, string f) {
-  string cmp = ((f=="r")? CRD : CWD);
-  auto res = buildNormalizedPath(path.absolutePath()).startsWith(cmp);
-  if(!res) writeln("====== ! = "~ path);
-  return res;
+  return(buildNormalizedPath(path.absolutePath()).startsWith(((f=="r")? CRD : CWD)));
 }
 
 // No ouput, only warnings from llama layer
