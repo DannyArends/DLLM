@@ -166,7 +166,6 @@ string replaceInFile(string path, string search, string replacement) {
 @Tool("Write a Memento to your future self, returns nothing")
 string writeMemento(string content) {
   try {
-    if (!isSafePath(memento, "w")) return "Error: path outside allowed directories";
     memento.write(content);
     writefln("=== Wrote to '%s'", memento);
     return JSONValue.emptyObject.toString();

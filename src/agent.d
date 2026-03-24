@@ -143,6 +143,6 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
     if (time) { writef("\n===[%.1f tok/s]", i * 1000.0 / (MonoTime.currTime - t0).total!"msecs"); }
     write("\n"); stdout.fflush();
   }
-  agent.kvPos += response.length;
+  agent.kvPos += (response.length + 1);
   return(response);
 }
