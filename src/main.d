@@ -75,15 +75,14 @@ int main(string[] args) {
     }
     agent.history ~= llama_chat_message(toStringz("user"), toStringz(user));
     agent.condense();
-    agent.clear();
-    agent.process(agent.prompt(), false);
     do { // Agent tool calling loop
+      agent.clear();
+      agent.process(agent.prompt(), false);
       auto tokens = agent.generate();
       auto response = agent.clean(tokens);
       auto results = agent.execute(response.parse());
       if (results.length == 0) break;
       agent.history ~= llama_chat_message(toStringz("tool"), toStringz(results));
-      agent.process(agent.prompt(), false);
     } while(true);
   } while(agent.running);
   return(0);

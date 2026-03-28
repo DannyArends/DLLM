@@ -36,7 +36,8 @@ llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggm
   cp.n_ctx = n_ctx; cp.n_batch = n_batch; cp.n_ubatch = n_batch; 
   cp.n_threads = totalCPUs; cp.n_threads_batch = totalCPUs;
   cp.type_k = type; cp.type_v = type;
-  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED; cp.offload_kqv = KQVonGpu; cp.no_perf = true;
+  cp.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO; 
+  cp.op_offload = true; cp.offload_kqv = KQVonGpu; cp.no_perf = true;
   return(cp);
 }
 
