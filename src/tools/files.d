@@ -18,7 +18,7 @@ import std.stdio : writefln;
 import std.string : replace, strip, toStringz, splitLines, indexOf;
 import std.random : uniform;
 
-import utils;
+import utils : CWD, isSafePath;
 import model : tokenize;
 import agent : agent;
 import rag : query, ingest;
@@ -134,34 +134,6 @@ string writeFile(string content, string extension = "txt") {
     path.write(content);
     return path;
   } catch (Exception e) { return format("Error: %s", e.msg); }
-}
-
-@Tool("Replace the line at lineNumber (1-based) in a file at path with replacement.")
-string replaceLine(string path, string lineNumber, string replacement) {
-  if (!isSafePath(path, "w")) return "Error: path outside allowed directories";
-  if (!exists(path)) return "Error: file does not exist";
-  try {
-    auto lines = readText(path).splitLines();
-    int n = to!int(lineNumber) - 1;
-    if (n < 0 || n >= cast(int)lines.length) return("Error: line number out of range");
-    lines[n] = replacement;
-    path.write(lines.join("\n"));
-    return("OK");
-  } catch (Exception e) { return(format("Error: %s", e.msg)); }
-}
-
-@Tool("Replace the first occurrence of 'search' with 'replacement' in a file at path.")
-string replaceInFile(string path, string search, string replacement) {
-  if (!isSafePath(path, "w")) return "Error: path outside allowed directories";
-  if (!exists(path)) return "Error: file does not exist";
-  try {
-    string content = readText(path);
-    auto idx = content.indexOf(search);
-    if (idx < 0) return("Error: search string not found");
-    content = content[0..idx] ~ replacement ~ content[idx + search.length..$];
-    path.write(content);
-    return("OK");
-  } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
 @Tool("Write a Memento to your future self, returns nothing")
