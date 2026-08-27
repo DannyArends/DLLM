@@ -28,6 +28,7 @@ struct EditOp {
 EditOp parseOp(string op) {
   auto p = op[1..$].split(op[1]);
   if (p.length < 3) throw new Exception("invalid operation syntax");
+  if (op[0] != 's' && !["d","i","a"].canFind(p[2])) throw new Exception("unknown command '" ~ p[2] ~ "', expected d, i, or a");
   return op[0] == 's' ? EditOp(p[1], "s", p[2], p.length > 3 && p[3].canFind('g')) : EditOp(p[1], p[2], p.length > 3 ? p[3..$].join(op[1]) : "");
 }
 
