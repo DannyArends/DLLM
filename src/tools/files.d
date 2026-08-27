@@ -90,7 +90,7 @@ string loadImage(string path) {
   if (!isSafePath(path, "r")) return "Error: path outside allowed directories";
   try {
     if (agent.vision is null) return "Error: vision context not initialized";
-      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz());
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz(), false).bitmap;
       if (bmp is null) return format("Error: failed to load image at '%s'", path);
       agent.bitmaps ~= bmp;
       return format("Image loaded from '%s': <__media__>", path);

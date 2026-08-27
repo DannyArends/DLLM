@@ -38,7 +38,7 @@ int main(string[] args) {
   scope (exit) { model.free(); }
 
   // Conversational sampler
-  llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
+  llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(llama_vocab_n_tokens(model.vocab), 64, 1.1f, 0.0f, 0.0f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_temp(0.7f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 

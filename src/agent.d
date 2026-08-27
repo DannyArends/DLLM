@@ -65,7 +65,7 @@ bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
   if(agent.verbose) writefln("[DEBUG] %d bmps, text contains %d markers", agent.bitmaps.length, text.count("<__media__>"));
 
   // Tokenize text & Images
-  mtmd_input_text input = { text: text.toStringz(), add_special: add, parse_special: parse };
+  mtmd_input_text input = { text: text.toStringz(), text_len: text.length, add_special: add, parse_special: parse };
   mtmd_tokenize(agent.vision, chunks, &input, agent.bitmaps.ptr, agent.bitmaps.length);
 
   // Evaluate into KV cache
