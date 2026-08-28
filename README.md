@@ -42,6 +42,33 @@ Or start an interactive session:
   dub
 ```
 
+### WebSearch via searxng
+
+Install via:
+```
+docker run --name searxng -d -p 8080:8080 \
+  -v "./config/:/etc/searxng/" -v "./data/:/var/cache/searxng/" \
+  docker.io/searxng/searxng:latest
+```
+
+Enable JSON support:
+```
+search:
+  formats:
+    - html
+    - json
+```
+
+Update request type to GET
+```
+// before
+server:
+  method: "POST"
+// after
+server:
+  method: "GET"
+```
+
 ### Contributing 🙌
 
 Want to contribute? Great! Contribute to this repo by starring ⭐ or forking 🍴, and feel 
