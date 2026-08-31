@@ -1,6 +1,6 @@
 ## DLLM - Compile 🦙.cpp dependency ✨
 Clone the repository
-  * `git clone --recursive https://github.com/DannyArends/DImGui.git`
+  * `git clone --recursive https://github.com/DannyArends/DLLM.git`
   * `git submodule update --init --recursive` (If already cloned)
 
 Compile for MS Windows 11:
