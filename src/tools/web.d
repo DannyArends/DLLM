@@ -63,7 +63,9 @@ string webSearch(string query, string max_results) {
     string url = "http://localhost:8080/search?q=" ~ encodeComponent(query) ~ "&format=json";
     
     // Fetch search results (already limited by API)
-    auto response = get(url);
+    auto http = HTTP();
+    http.addRequestHeader("User-Agent", "Lynx (textmode)");
+    auto response = get(url, http);
     auto json = parseJSON(cast(string)response);
     JSONValue[] results;
 

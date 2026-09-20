@@ -24,7 +24,7 @@ int main(string[] args) {
   setupConsole();
 
   // CPU: Summary model with low temp sampler
-  auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mCpu(), context(32768, 1024, GGML_TYPE_Q8_0, false));
+  auto summary = load(["../LLMs/qwen2.5-0.5b-instruct-q4_k_m.gguf"], mGpu(), context(32768, 1024, GGML_TYPE_Q8_0, false));
   scope (exit) { summary.free(); }
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_temp(0.3f));
   llama_sampler_chain_add(summary.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
@@ -39,7 +39,7 @@ int main(string[] args) {
   scope (exit) { model.free(); }
 
   // Conversational sampler
-  llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(64, 1.1f, 0.0f, 0.0f));
+  llama_sampler_chain_add(model.sampler, llama_sampler_init_penalties(llama_vocab_n_tokens(model.vocab), 64, 1.1f, 0.0f, 0.0f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_temp(0.7f));
   llama_sampler_chain_add(model.sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
