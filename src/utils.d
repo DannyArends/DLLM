@@ -9,7 +9,7 @@ import includes;
 public import core.stdc.stdlib : exit;
 public import core.stdc.stdio : fflush;
 public import std.algorithm : any, count, endsWith, min, map, sort, sum;
-public import std.array : appender, array, replace, join;
+public import std.array : appender, array, replace, join, split;
 public import std.digest.md : md5Of, toHexString;
 public import std.format : format;
 public import std.file : getcwd, exists, readText, remove;

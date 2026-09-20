@@ -30,14 +30,17 @@ __gshared Agent agent = Agent();
 
 void free(ref Agent agent) { foreach(file; agent.tmp) { if(file.exists()){ file.remove(); } } }
 
+// Render chat messages to a prompt string via the model's chat template
+string render(const(char)* chat, llama_chat_message[] msgs, bool addAssistant) {
+  int n = llama_chat_apply_template(chat, msgs.ptr, msgs.length, addAssistant, null, 0);
+  char[] buf = new char[n];
+  llama_chat_apply_template(chat, msgs.ptr, msgs.length, addAssistant, buf.ptr, n);
+  return(buf.idup);
+}
+
 // Generate a full prompt addition
 string prompt(ref Agent agent, bool addAssistant = true) {
-  int n0 = llama_chat_apply_template(agent.chat, agent.history.ptr, agent.history.length, false, null, 0);
-  int n1 = llama_chat_apply_template(agent.chat, agent.history.ptr, agent.history.length, true, null, 0);
-  int n = addAssistant? n1 : n0;
-  char[] buf = new char[n];
-  llama_chat_apply_template(agent.chat, agent.history.ptr, agent.history.length, addAssistant, buf.ptr, n);
-  string prompt = buf.idup;
+  string prompt = render(agent.chat, agent.history, addAssistant);
   if(agent.verbose) writefln("===\n%s===", prompt);
   if(addAssistant) prompt ~= "<think>\nBudget: 2048 tokens\n";
   return(prompt);

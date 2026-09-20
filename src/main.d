@@ -8,6 +8,7 @@ import includes;
 import utils;
 
 import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear, free;
+import classify : classify, Verdict;
 import rag : RAG, load, save;
 import files : memento;
 import summary : Summary;
@@ -52,6 +53,27 @@ int main(string[] args) {
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
   scope (exit) { agent.free(); }
+
+  // Classification mode: dub -- classify ["<state>" "<question>" "<optA>" "<optB>" ...]
+  if (args.length > 1 && args[1] == "classify") {
+    if (args.length >= 6) {                       // One-shot (quote multi-word options)
+      auto opts = args[4 .. $];
+      Verdict v = agent.classify(args[2], args[3], opts);
+      writefln("%s (%.2f)", opts[v.index], v.confidence);
+      return(0);
+    }
+    while (true) {                                // Interactive: blank/exit/quit to stop
+      write("state: "); stdout.fflush(); auto state = readln().strip();
+      if (state == "" || state == "exit" || state == "quit") break;
+      write("question: "); stdout.fflush(); auto question = readln().strip();
+      write("options: "); stdout.fflush(); auto opts = readln().strip().split(",").map!strip.array;
+      if (opts.length < 2) { writeln("need >= 2 comma-separated options"); continue; }
+      Verdict v = agent.classify(state, question, opts);
+      writefln("=> %s (%.2f)\n", opts[v.index], v.confidence);
+    }
+    return(0);
+  }
+
   ensurePythonImage();
   agent.rag.load("workspace/RAG.bin");
   scope(exit) agent.rag.save("workspace/RAG.bin");
