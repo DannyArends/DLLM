@@ -14,7 +14,7 @@ public import std.digest.md : md5Of, toHexString;
 public import std.format : format;
 public import std.file : getcwd, exists, readText, remove;
 public import std.json : JSONValue;
-public import std.math : sqrt;
+public import std.math : sqrt, exp;
 public import std.numeric : dotProduct;
 public import std.path : buildNormalizedPath, absolutePath, isAbsolute, dirSeparator;
 public import std.parallelism : totalCPUs;
