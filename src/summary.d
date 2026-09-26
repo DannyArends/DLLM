@@ -7,8 +7,8 @@ module summary;
 import includes;
 import utils;
 
-import agent : Agent, clear;
-import model : clean, LlamaModel, tokenize, detokenize;
+import agent : Agent, clear, render;
+import model : clean, decode, LlamaModel, tokenize, detokenize;
 
 struct Summary {
   LlamaModel model;               /// Model pointer
@@ -35,13 +35,10 @@ string summarize(ref Summary summary, llama_chat_message[] history) {
     llama_chat_message(toStringz("user"), toStringz(msgs.data))
   ];
 
-  // Apply the summary model's own chat template
-  int n = llama_chat_apply_template(summary.chat, msgHistory.ptr, msgHistory.length, true, null, 0);
-  char[] buf = new char[n];
-  llama_chat_apply_template(summary.chat, msgHistory.ptr, msgHistory.length, true, buf.ptr, n);
+  string prompt = render(summary.chat, msgHistory, true);  // Apply the summary model's own chat template
 
   auto t0 = MonoTime.currTime;
-  summary.process(pos, buf.idup, false, false);
+  summary.process(pos, prompt, false, false);
   writefln("[summary] process: %.1fs", (MonoTime.currTime - t0).total!"msecs" / 1000.0);
   auto t1 = MonoTime.currTime;
   auto tokens = summary.generate(pos);
@@ -88,14 +85,7 @@ llama_token[] generate(ref Summary summary, ref llama_pos pos, size_t maxTokens 
     auto token = llama_sampler_sample(summary.sampler, summary.ctx, -1);
     if (llama_vocab_is_eog(summary.vocab, token)) break;
     response ~= token;
-
-    batch.token[0] = token;
-    batch.pos[0] = pos + cast(int)response.length - 1;
-    batch.logits[0] = 1;
-    batch.n_tokens = 1;
-    batch.n_seq_id[0] = 1;
-    batch.seq_id[0][0] = 0;
-    if (llama_decode(summary.ctx, batch) != 0) break;
+    if (!summary.decode(batch, token, pos + cast(int)response.length - 1)) break;
   }
   pos += cast(llama_pos)response.length;
   return response;

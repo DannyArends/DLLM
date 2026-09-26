@@ -70,6 +70,14 @@ string detokenize(LlamaModel model, llama_token[] tokens) {
   return(txt.data);
 }
 
+// Decode a single token at position pos into the KV cache; false on failure
+bool decode(ref LlamaModel model, ref llama_batch batch, llama_token token, llama_pos pos) {
+  batch.token[0] = token; batch.pos[0] = pos;
+  batch.logits[0] = 1;    batch.n_tokens = 1;
+  batch.n_seq_id[0] = 1;  batch.seq_id[0][0] = 0;
+  return(llama_decode(model.ctx, batch) == 0);
+}
+
 // Clean a text string by removing thinking
 string clean(string txt) {
   auto x = txt.lastIndexOf("</think>\n"); return(strip(x >= 0?txt[x + "</think>\n".length .. $]: txt)); 

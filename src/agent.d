@@ -7,7 +7,7 @@ module agent;
 import includes;
 import utils;
 
-import model : clean, detokenize, LlamaModel, tokenOf, tokenize;
+import model : clean, decode, detokenize, LlamaModel, tokenOf, tokenize;
 import rag : RAG;
 import summary : Summary, summarize;
 import tools : ToolCall, executeTool;
@@ -75,7 +75,7 @@ bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
   auto r = mtmd_helper_eval_chunks(agent.vision, agent.ctx, chunks, agent.kvPos, 0, llama_n_batch(agent.ctx), true, &agent.kvPos);
   if(agent.verbose) writefln("Number of tokens: %d / %d, kvPos: %d", chunks.nTokens, llama_n_ctx(agent.ctx), agent.kvPos);
 
-  foreach (ref msg; agent.history) {
+  foreach(ref msg; agent.history) {
     msg.content = toStringz(fromStringz(msg.content).replace("<__media__>", "[media]"));
   }
   agent.bitmaps = [];
@@ -90,16 +90,13 @@ string clean(ref Agent agent, llama_token[] tokens) {
 }
 
 // Clear the KV-cache
-void clear(ref Agent agent) { 
-  llama_memory_clear(llama_get_memory(agent.ctx), true); agent.kvPos = 0; 
-}
+void clear(ref Agent agent) { llama_memory_clear(llama_get_memory(agent.ctx), true); agent.kvPos = 0; }
 
 // Execute all tool calls and format responses
 string execute(ref Agent agent, const ToolCall[] calls) {
-  return calls.map!((call) {
-    return JSONValue(["tool": JSONValue(call.name), 
-                      "args": JSONValue(call.arguments), 
-                      "result": JSONValue(executeTool(call.name, call.arguments))]).toString();
+  return calls.map!((call) { return JSONValue(["tool": JSONValue(call.name), 
+                                               "args": JSONValue(call.arguments), 
+                                               "result": JSONValue(executeTool(call.name, call.arguments))]).toString();
   }).join;
 }
 
@@ -116,33 +113,28 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
   size_t i = 0;
   auto t0 = MonoTime.currTime;
 
-  for (i = 0; i < (llama_n_ctx(agent.ctx) - agent.kvPos); i++) {
+  for(i = 0; i < (llama_n_ctx(agent.ctx) - agent.kvPos); i++) {
     // Figure out the sampler, and sample a token
     auto sampler = (agent.json && inToolCall)? agent.json : agent.sampler;
     auto token = llama_sampler_sample(sampler, agent.ctx, -1);
 
     // Break on EOG, continue on null & start tokens
-    if (llama_vocab_is_eog(agent.vocab, token)){ break; }
-    if (im_start != LLAMA_TOKEN_NULL && token == im_start){ break; }
+    if(llama_vocab_is_eog(agent.vocab, token)){ break; }
+    if(im_start != LLAMA_TOKEN_NULL && token == im_start){ break; }
 
     // Add the token, detokenize, and print
     response ~= token;
     string strTok = agent.detokenize([token]);
-    if (verbose) { write(strTok); if(i % 20 == 0){ stdout.fflush(); } }
+    if(verbose) { write(strTok); if(i % 20 == 0){ stdout.fflush(); } }
 
     // Add string representation of token, and check for tool call
     tBuf ~= strTok;
-    if (tBuf.length > MAX_TAG) tBuf = tBuf[$ - MAX_TAG .. $];
-    if (!inToolCall && tBuf.endsWith("<tool_call>")) { inToolCall = true;  tBuf = ""; }
-    if (inToolCall && tBuf.endsWith("</tool_call>")) { inToolCall = false; tBuf = ""; llama_sampler_reset(agent.json); }
-
-    // Add the generated token to KV cache
-    batch.token[0] = token;  batch.pos[0] = agent.kvPos + cast(int)response.length;
-    batch.logits[0] = 1;     batch.n_tokens = 1;
-    batch.n_seq_id[0] = 1;   batch.seq_id[0][0] = 0;
-    if (llama_decode(agent.ctx, batch) != 0) break;
+    if(tBuf.length > MAX_TAG) tBuf = tBuf[$ - MAX_TAG .. $];
+    if(!inToolCall && tBuf.endsWith("<tool_call>")) { inToolCall = true;  tBuf = ""; }
+    if(inToolCall && tBuf.endsWith("</tool_call>")) { inToolCall = false; tBuf = ""; llama_sampler_reset(agent.json); }
+    if(!agent.decode(batch, token, agent.kvPos + cast(int)response.length)) break;
   }
-  if (verbose) {
+  if(verbose) {
     if (time) { writef("\n===[%.1f tok/s]", i * 1000.0 / (MonoTime.currTime - t0).total!"msecs"); }
     write("\n"); stdout.fflush();
   }
