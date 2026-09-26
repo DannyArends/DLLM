@@ -79,21 +79,21 @@ string readFileIntoRAG(string path) {
 
 @Tool("Check if a file or directory exists. Returns 'true' or 'false'.")
 string pathExists(string path) {
-  if (!isSafePath(path, "r")) return "Error: path outside allowed directories";
-  try {
+  if(!isSafePath(path, "r")) return "Error: path outside allowed directories";
+  try{
     return exists(path) ? "true" : "false";
   } catch (Exception e) { return(format("Error: %s", e.msg)); }
 }
 
 @Tool("Load an image at path into the vision context. The returned [image] marker embeds the image in the tool response.")
 string loadImage(string path) {
-  if (!isSafePath(path, "r")) return "Error: path outside allowed directories";
-  try {
-    if (agent.vision is null) return "Error: vision context not initialized";
-      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz(), false).bitmap;
-      if (bmp is null) return format("Error: failed to load image at '%s'", path);
+  if(!isSafePath(path, "r")) return "Error: path outside allowed directories";
+  try{
+    if(agent.vision is null) return("Error: vision context not initialized");
+      mtmd_bitmap* bmp = mtmd_helper_bitmap_init_from_file(agent.vision, path.toStringz(), false, mtmd_helper_init_opt_default()).bitmap;
+      if(bmp is null) return(format("Error: failed to load image at '%s'", path));
       agent.bitmaps ~= bmp;
-      return format("Image loaded from '%s': <__media__>", path);
+      return(format("Image loaded from '%s': <__media__>", path));
   } catch (Exception e) { return format("Error: %s", e.msg); }
 }
 

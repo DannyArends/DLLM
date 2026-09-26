@@ -7,7 +7,7 @@ module summary;
 import includes;
 import utils;
 
-import agent : Agent, clear, render;
+import agent : Agent, render;
 import model : clean, decode, LlamaModel, tokenize, detokenize;
 
 struct Summary {
