@@ -74,7 +74,7 @@ int main(string[] args) {
     return(0);
   }
 
-  ensurePythonImage();
+  try { ensurePythonImage(); } catch (Exception e) { writeln("[docker] not available, so the runCode sandbox is disabled: ", e.msg); }
   agent.rag.load("workspace/RAG.bin");
   scope(exit) agent.rag.save("workspace/RAG.bin");
 

@@ -40,6 +40,24 @@
 			"./deps/llama.cpp/build/bin/ggml-cpu.dll",
 			"./deps/llama.cpp/build/bin/ggml-cuda.dll",
 			"./deps/llama.cpp/build/bin/mtmd.dll"]
+	},
+	{
+		"name": "osx",
+		"mainSourceFile": "src/main.d",
+		"targetType": "executable",
+		"targetPath": "bin",
+		"platforms": ["osx"],
+		"dflags": ["-P-I./deps/llama.cpp/include/", "-P-I./deps/llama.cpp/ggml/include/", "-P-I./deps/llama.cpp/tools/mtmd/"],
+		"sourceFiles": [
+			"./deps/llama.cpp/build/src/libllama.a",
+			"./deps/llama.cpp/build/tools/mtmd/libmtmd.a",
+			"./deps/llama.cpp/build/ggml/src/libggml.a",
+			"./deps/llama.cpp/build/ggml/src/ggml-metal/libggml-metal.a",
+			"./deps/llama.cpp/build/ggml/src/ggml-blas/libggml-blas.a",
+			"./deps/llama.cpp/build/ggml/src/libggml-cpu.a",
+			"./deps/llama.cpp/build/ggml/src/libggml-base.a",
+			"./deps/llama.cpp/build/vendor/hash/libvendor-hash.a"],
+		"lflags": ["-framework", "Metal", "-framework", "MetalKit", "-framework", "Foundation", "-framework", "Accelerate"],
+		"libs": ["c++"]
 	}]
 }
-

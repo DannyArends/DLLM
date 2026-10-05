@@ -22,6 +22,19 @@ Compile for Linux:
   cmake --build . --config Release -j10
 ```
 
+Compile for macOS (Apple silicon, Metal):
+```
+  brew install ldc dub cmake
+  cd deps/llama.cpp
+  mkdir build
+  cd build
+  cmake -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_OPENSSL=OFF -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DGGML_NATIVE=ON ../
+  cmake --build . --config Release -j10
+  cd ../../..
+  dub build --config=osx --compiler=ldc2 --build=release
+```
+The static libraries DLLM links are built even if the umbrella `llama` app fails to link (it needs the server, which this build skips). Docker is optional on macOS: without it the runCode sandbox is disabled and everything else works. The playWAV tool uses `afplay`.
+
 ### Build with 🛠️
 - **Visual Studio**: Build with [Microsoft Visual Studio](https://visualstudio.microsoft.com/)
 - **Cmake**: Build with [Cmake](https://cmake.org/download/)
