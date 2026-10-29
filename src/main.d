@@ -52,7 +52,7 @@ int main(string[] args) {
   agent = Agent(model: model, chat : llama_model_chat_template(model, null),
                 rag : RAG(model : embed), 
                 summary : Summary(model : summary, chat: llama_model_chat_template(summary, null)) );
-  scope (exit) { agent.free(); }
+  scope (exit) { utils.free(agent); }
 
   // Classification mode: dub -- classify ["<state>" "<question>" "<optA>" "<optB>" ...]
   if (args.length > 1 && args[1] == "classify") {

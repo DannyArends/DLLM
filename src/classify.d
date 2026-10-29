@@ -52,7 +52,7 @@ Verdict classify(ref Agent agent, string state, string question, const(string)[]
 
 unittest {
   import std.file : exists;
-  import agent : Agent, free;
+  import agent : Agent;
   import model : load, mGpu, context, free;
   enum modelP = "../LLMs/Qwen3.5-4B-Q4_K_M.gguf";
   enum projP  = "../LLMs/mmproj-Qwen3.5-4B-F16.gguf";
@@ -64,7 +64,7 @@ unittest {
   scope(exit) m.free();
 
   auto a = Agent(model: m, chat: llama_model_chat_template(m, null));
-  scope(exit) a.free();
+  scope(exit) utils.free(a);
 
   auto v = a.classify("The kitten is asleep in a sunbeam.", "What is this text about?", ["finance", "animals", "weather"]);
   check(["finance", "animals", "weather"][v.index], "animals", "classify: picks obvious option");
