@@ -7,7 +7,7 @@ module main;
 import includes;
 import utils;
 
-import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear, free;
+import agent : Agent, agent, condense, execute, prompt, process, generate, clean, clear;
 import classify : classify, Verdict;
 import rag : RAG, load, save;
 import files : memento;
@@ -99,7 +99,7 @@ int main(string[] args) {
     agent.condense();
     do { // Agent tool calling loop
       agent.clear();
-      agent.process(agent.prompt(), false);
+      if(!agent.process(agent.prompt(), false)) { writeln("[ERROR] prompt evaluation failed"); break; }
       auto tokens = agent.generate();
       auto response = agent.clean(tokens);
       auto results = agent.execute(response.parse());

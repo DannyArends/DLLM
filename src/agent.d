@@ -25,10 +25,9 @@ struct Agent {
   bool verbose = false;           /// verbose output
   alias model this;
 }
+
 /// Global agent singleton — NOT thread-safe, only for use within tool callbacks
 __gshared Agent agent = Agent();
-
-void free(ref Agent agent) { foreach(file; agent.tmp) { if(file.exists()){ file.remove(); } } }
 
 // Render chat messages to a prompt string via the model's chat template
 string render(const(char)* chat, llama_chat_message[] msgs, bool addAssistant) {
@@ -69,15 +68,15 @@ bool process(ref Agent agent, string text, bool add = true, bool parse = true) {
 
   // Tokenize text & Images
   mtmd_input_text input = { text: text.toStringz(), text_len: text.length, add_special: add, parse_special: parse };
-  mtmd_tokenize(agent.vision, chunks, &input, agent.bitmaps.ptr, agent.bitmaps.length);
+  auto t0 = MonoTime.currTime;
+  auto t = mtmd_tokenize(agent.vision, chunks, &input, agent.bitmaps.ptr, agent.bitmaps.length);
 
-  // Evaluate into KV cache
-  auto r = mtmd_helper_eval_chunks(agent.vision, agent.ctx, chunks, agent.kvPos, 0, llama_n_batch(agent.ctx), true, &agent.kvPos);
-  if(agent.verbose) writefln("Number of tokens: %d / %d, kvPos: %d", chunks.nTokens, llama_n_ctx(agent.ctx), agent.kvPos);
+  // Evaluate into KV cache, only when tokenization succeeded
+  auto r = (t != 0) ? t : mtmd_helper_eval_chunks(agent.vision, agent.ctx, chunks, agent.kvPos, 0, llama_n_batch(agent.ctx), true, &agent.kvPos);
+  if(agent.verbose){ writefln("prefill: %d tok, %d ms", chunks.nTokens, (MonoTime.currTime - t0).total!"msecs"); }
 
-  foreach(ref msg; agent.history) {
-    msg.content = toStringz(fromStringz(msg.content).replace("<__media__>", "[media]"));
-  }
+  foreach(ref msg; agent.history) { msg.content = toStringz(fromStringz(msg.content).replace("<__media__>", "[media]")); }
+  foreach(bmp; agent.bitmaps) mtmd_bitmap_free(bmp);
   agent.bitmaps = [];
   return(r == 0);
 }
@@ -132,12 +131,12 @@ llama_token[] generate(ref Agent agent, bool verbose = true, bool time = true) {
     if(tBuf.length > MAX_TAG) tBuf = tBuf[$ - MAX_TAG .. $];
     if(!inToolCall && tBuf.endsWith("<tool_call>")) { inToolCall = true;  tBuf = ""; }
     if(inToolCall && tBuf.endsWith("</tool_call>")) { inToolCall = false; tBuf = ""; llama_sampler_reset(agent.json); }
-    if(!agent.decode(batch, token, agent.kvPos + cast(int)response.length)) break;
+    if(!agent.decode(batch, token, agent.kvPos + cast(int)response.length - 1)) break;
   }
   if(verbose) {
     if (time) { writef("\n===[%.1f tok/s]", i * 1000.0 / (MonoTime.currTime - t0).total!"msecs"); }
     write("\n"); stdout.fflush();
   }
-  agent.kvPos += (response.length + 1);
+  agent.kvPos += response.length;
   return(response);
 }

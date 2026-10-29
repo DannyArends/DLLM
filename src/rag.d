@@ -10,6 +10,7 @@ import utils;
 import model : detokenize, LlamaModel, tokenize;
 
 const uint RAG_MAGIC = 0xBA610002;
+const size_t EMBED_MARGIN = 16;     /// Tokens reserved per chunk for the task prefix and special tokens
 
 struct Chunk {
   string origin;                  /// Chunk origin (unknown, path, url)
@@ -25,7 +26,8 @@ struct RAG {
 }
 
 // Compute embeddings for tokens
-float[] embed(RAG rag, llama_token[] tokens) {
+float[] embed(RAG rag, string text, string task) {
+  auto tokens = rag.tokenize(task ~ ": " ~ text, true, false);
   llama_batch batch = llama_batch_get_one(tokens.ptr, cast(int)tokens.length);
   if (llama_encode(rag.ctx, batch) != 0) { writeln("encode failed"); return []; }
   float* e = llama_get_embeddings_seq(rag.ctx, 0);
@@ -35,18 +37,18 @@ float[] embed(RAG rag, llama_token[] tokens) {
 
 // Ingest a document into the RAG using batchsize batches, shifted by 1/2 batchsize
 size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown", bool verbose = false) {
-  auto n_batch = llama_n_batch(rag.ctx);
+  auto n_chunk = llama_n_batch(rag.ctx) - EMBED_MARGIN;
   llama_token[] all = rag.tokenize(txt, false);
   size_t nChunk = 0;
-  for (size_t i = 0; i < all.length; i += n_batch / 2) {
-    auto tokens = all[i .. min(i + n_batch, all.length)];
+  for (size_t i = 0; i < all.length; i += n_chunk / 2) {
+    auto tokens = all[i .. min(i + n_chunk, all.length)];
     auto text = rag.detokenize(tokens);
     auto hash = md5Of(text).toHexString().idup;
     if (rag.index.any!(c => c.hash == hash)) {
       if (verbose) writefln("skip ingestion of %d tokens with hash: %s", tokens.length, hash);
       continue;
     }
-    rag.index ~= Chunk(origin, text, hash, rag.embed(tokens));
+    rag.index ~= Chunk(origin, text, hash, rag.embed(text, "search_document"));
     nChunk++;
   }
   return([all.length, nChunk]);
@@ -54,7 +56,7 @@ size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown", bool verbos
 
 // Query the RAG
 string[] query(RAG rag, string query, int topK = 3, bool verbose = false) {
-  float[] qEmbed = rag.embed(rag.tokenize(query, false));
+  float[] qEmbed = rag.embed(query, "search_query");
   auto scored = rag.index.map!(c => tuple(c.origin, c.text, cosineSimilarity(qEmbed, c.embedding))).array;
   auto ranked = scored.sort!((a, b) => a[2] > b[2]);
   if (verbose) { foreach(s; ranked.take(topK)) writefln("[RAG] score: %.4f origin: %s", s[2], s[0]); }

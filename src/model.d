@@ -44,7 +44,7 @@ llama_context_params context(uint32_t n_ctx = 16384, uint32_t n_batch = 512, ggm
 // Model embeddings parameters
 llama_context_params embedding(uint32_t n_batch = 512) {
   llama_context_params cp = context(n_batch, n_batch, GGML_TYPE_Q8_0, false);
-  cp.embeddings = true; cp.pooling_type = LLAMA_POOLING_TYPE_CLS;
+  cp.embeddings = true;
   return(cp);
 }
 

@@ -38,9 +38,12 @@ shared static this() {
   CWD = buildNormalizedPath(CRD ~ "/workspace") ~ dirSeparator;
 }
 
+// True if path lies inside the project root ("r") or the workspace (otherwise), compared on a directory boundary
 bool isSafePath(string path, string f) {
-  return(buildNormalizedPath(path.absolutePath()).startsWith(((f=="r")? CRD : CWD)));
+  return((buildNormalizedPath(path.absolutePath()) ~ dirSeparator).startsWith((f == "r") ? CRD ~ dirSeparator : CWD));
 }
+
+void free(T)(T agent) { foreach(file; agent.tmp) { if(file.exists()){ file.remove(); } } }
 
 // No ouput, only warnings from llama layer
 extern(C) void silent_log(ggml_log_level level, const char* text, void* user_data) {
@@ -94,10 +97,10 @@ unittest {
   check(isSafePath("/tmp/evil", "r") ? "true" : "false", "false", "isSafePath: /tmp blocked for read");
 
   // Write permission: must be within CWD (workspace only)
-
   check(isSafePath(CWD ~ "file.txt", "w") ? "true" : "false", "true",  "isSafePath: workspace file allowed for write");
   check(isSafePath(CRD ~ "/src", "w") ? "true" : "false", "false", "isSafePath: src blocked for write");
   check(isSafePath("/etc/passwd", "w") ? "true" : "false", "false", "isSafePath: /etc/passwd blocked for write");
+  check(isSafePath(CRD ~ "-evil/file.txt", "r") ? "true" : "false", "false", "isSafePath: sibling sharing root prefix blocked for read");
 
   // Path traversal attempts
   check(isSafePath(CWD ~ "../src", "w") ? "true" : "false", "false", "isSafePath: traversal blocked for write");
