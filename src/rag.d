@@ -26,9 +26,10 @@ struct RAG {
 }
 
 // Compute embeddings for tokens
-float[] embed(RAG rag, string text, string task) {
-  auto tokens = rag.tokenize(task ~ ": " ~ text, true, false);
-  llama_batch batch = llama_batch_get_one(tokens.ptr, cast(int)tokens.length);
+float[] embed(RAG rag, llama_token[] tokens, string task) {
+  auto pre = rag.tokenize(task ~ ": ", true, false);  // [CLS] prefix [SEP]
+  auto full = pre[0 .. $ - 1] ~ tokens ~ pre[$ - 1 .. $];
+  llama_batch batch = llama_batch_get_one(full.ptr, cast(int)full.length);
   if (llama_encode(rag.ctx, batch) != 0) { writeln("encode failed"); return []; }
   float* e = llama_get_embeddings_seq(rag.ctx, 0);
   if (e is null) { writeln("embeddings null"); return []; }
@@ -48,7 +49,7 @@ size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown", bool verbos
       if (verbose) writefln("skip ingestion of %d tokens with hash: %s", tokens.length, hash);
       continue;
     }
-    rag.index ~= Chunk(origin, text, hash, rag.embed(text, "search_document"));
+    rag.index ~= Chunk(origin, text, hash, rag.embed(tokens, "search_document"));
     nChunk++;
   }
   return([all.length, nChunk]);
@@ -56,7 +57,7 @@ size_t[2] ingest(ref RAG rag, string txt, string origin = "unknown", bool verbos
 
 // Query the RAG
 string[] query(RAG rag, string query, int topK = 3, bool verbose = false) {
-  float[] qEmbed = rag.embed(query, "search_query");
+  float[] qEmbed = rag.embed(rag.tokenize(query, false), "search_query");
   auto scored = rag.index.map!(c => tuple(c.origin, c.text, cosineSimilarity(qEmbed, c.embedding))).array;
   auto ranked = scored.sort!((a, b) => a[2] > b[2]);
   if (verbose) { foreach(s; ranked.take(topK)) writefln("[RAG] score: %.4f origin: %s", s[2], s[0]); }
