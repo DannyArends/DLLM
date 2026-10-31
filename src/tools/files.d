@@ -152,5 +152,6 @@ string playWAV(string path) {
   if (path.canFind("'", ";", "&", "|", "`")) return "Error: invalid characters in path";
   version(Windows) { auto r = execute(["powershell", "-c", "(New-Object Media.SoundPlayer '" ~ path ~ "').PlaySync()"]); }
   version(linux) { auto r = execute(["aplay", path]); }
+  version(OSX) { auto r = execute(["afplay", path]); }
   return r.status == 0 ? "OK" : "Error: " ~ r.output.strip();
 }

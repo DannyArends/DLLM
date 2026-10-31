@@ -8,6 +8,7 @@ import includes;
 
 public import core.stdc.stdlib : exit;
 public import core.stdc.stdio : fflush;
+version(OSX) public import core.stdc.stdio : stdout; // macOS: stdout is a macro in the C headers, so importC does not see it
 public import std.algorithm : any, count, endsWith, min, map, sort, sum;
 public import std.array : appender, array, replace, join, split;
 public import std.digest.md : md5Of, toHexString;
